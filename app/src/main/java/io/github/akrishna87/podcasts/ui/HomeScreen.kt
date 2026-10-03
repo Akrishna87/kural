@@ -24,21 +24,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.akrishna87.podcasts.LibraryTab
 import io.github.akrishna87.podcasts.PodcastViewModel
 import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.Section
 import io.github.akrishna87.podcasts.data.Episode
 
 /**
- * Home opens straight onto your own shows, not on promotions: what you're partway through,
- * what's up next, what's new from the shows you follow, and mentions of the names you watch.
+ * Home opens straight onto your own shows: what you're partway through, the shows you follow,
+ * what's up next, what's new and latest from them, and mentions of the names you watch.
+ * Suggestions, picked from the categories you listen to, come after all of that.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: PodcastViewModel) {
     val snap = vm.snap
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importOpml) }
-    PullToRefreshBox(isRefreshing = vm.refreshing, onRefresh = vm::refreshAll, modifier = Modifier.fillMaxSize()) {
+    LaunchedEffect(snap.loaded, snap.shows.size) { if (snap.loaded) vm.loadSuggestions() }
+    PullToRefreshBox(
+        isRefreshing = vm.refreshing,
+        onRefresh = {
+            vm.refreshAll()
+            vm.loadSuggestions(force = vm.suggestions.isEmpty())
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
             item {
                 Row(
@@ -55,12 +65,13 @@ fun HomeScreen(vm: PodcastViewModel) {
                 }
             }
 
-            if (snap.loaded && snap.shows.isEmpty() && snap.queue.isEmpty() && snap.inProgress.isEmpty()) {
+            val newcomer = snap.loaded && snap.shows.isEmpty() && snap.queue.isEmpty() && snap.inProgress.isEmpty()
+            if (newcomer) {
                 item {
                     EmptyState(
                         Icons.Rounded.Podcasts,
                         "Welcome to Kural",
-                        "Follow a few shows and their new episodes will land here. No account, no ads.",
+                        "Follow a few shows and their episodes will land here. No account, no ads.",
                         action = "Find podcasts",
                         onAction = { vm.selectSection(Section.DISCOVER) },
                     )
@@ -72,7 +83,6 @@ fun HomeScreen(vm: PodcastViewModel) {
                         }
                     }
                 }
-                return@LazyColumn
             }
 
             val continuing = listOfNotNull(vm.current) + snap.inProgress.filter { it.id != vm.currentId }
@@ -81,6 +91,31 @@ fun HomeScreen(vm: PodcastViewModel) {
                 item {
                     LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(continuing.take(12), key = { it.id }) { e -> ContinueCard(vm, e) }
+                    }
+                }
+            }
+
+            if (snap.shows.isNotEmpty()) {
+                item {
+                    SectionTitle("Your shows", action = "See all") {
+                        vm.libraryTab = LibraryTab.SHOWS
+                        vm.selectSection(Section.LIBRARY)
+                    }
+                }
+                item {
+                    // The badge counts each show's new episodes still in the inbox.
+                    val newByShow = snap.newEpisodes.groupingBy { it.podcastId }.eachCount()
+                    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(snap.shows, key = { "s" + it.entry.id }) { row ->
+                            ShowTile(
+                                row.entry.podcast.title,
+                                "",
+                                row.entry.podcast.artworkUrl,
+                                { vm.openPodcast(row.entry.id) },
+                                Modifier.width(112.dp),
+                                badge = newByShow[row.entry.id] ?: 0,
+                            )
+                        }
                     }
                 }
             }
@@ -98,23 +133,9 @@ fun HomeScreen(vm: PodcastViewModel) {
                 }
             }
 
-            item {
-                SectionTitle(
-                    "New episodes",
-                    action = if (snap.newEpisodes.isNotEmpty()) "Clear all" else null,
-                ) { vm.dismissNew(snap.newEpisodes.map { it.id }) }
-            }
-            if (snap.newEpisodes.isEmpty()) {
+            if (snap.newEpisodes.isNotEmpty()) {
                 item {
-                    Text(
-                        if (snap.shows.isEmpty()) "Follow shows to see their new episodes here."
-                        else "You're all caught up. Pull down to check for new episodes.",
-                        color = Palette.SubText,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            } else {
-                item {
+                    SectionTitle("New episodes", action = "Clear all") { vm.dismissNew(snap.newEpisodes.map { it.id }) }
                     Text(
                         "Play, queue or dismiss each one. Nothing here plays until you say so.",
                         color = Palette.SubText,
@@ -123,6 +144,46 @@ fun HomeScreen(vm: PodcastViewModel) {
                     )
                 }
                 items(snap.newEpisodes, key = { "n" + it.id }) { e -> InboxRow(vm, e) }
+            }
+
+            if (snap.latest.isNotEmpty()) {
+                item { SectionTitle("Latest from your shows") }
+                items(snap.latest, key = { "l" + it.id }) { e -> EpisodeRow(vm, e) }
+            } else if (snap.shows.isNotEmpty() && snap.newEpisodes.isEmpty()) {
+                item {
+                    Text(
+                        "You're all caught up. Pull down to check for new episodes.",
+                        color = Palette.SubText,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                }
+            }
+
+            // Suggestions, from the categories of the shows you follow.
+            if (vm.suggestions.isEmpty() && vm.suggestionsLoading) {
+                item { SectionTitle(if (snap.shows.isEmpty()) "Popular right now" else "Suggested for you") }
+                item { Loading() }
+            }
+            vm.suggestions.forEachIndexed { i, sug ->
+                item(key = "sug$i") {
+                    if (i == 0 && snap.shows.isNotEmpty()) {
+                        Text(
+                            "SUGGESTED FOR YOU",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Palette.Violet,
+                            modifier = Modifier.padding(start = 16.dp, top = 24.dp),
+                        )
+                    }
+                    SectionTitle(sug.title, action = "See all") {
+                        val c = sug.category
+                        if (c != null) vm.open(Screen.CategoryPage(c)) else vm.selectSection(Section.DISCOVER)
+                    }
+                    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(sug.shows, key = { it.appleId }) { p ->
+                            ShowTile(p.title, p.author, p.artworkUrl, { vm.openListing(p) }, Modifier.width(132.dp))
+                        }
+                    }
+                }
             }
         }
     }

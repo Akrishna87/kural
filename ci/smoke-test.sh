@@ -139,7 +139,10 @@ SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${SIZE%x*}; H=$
 echo "--- Launching the app (opens on Home)"
 adb shell am start -W -n "$PKG/.MainActivity"
 wait_for home 'text="Welcome to Kural"' 30 "Home doesn't show the welcome"
+sleep 6
+dump home
 shot 1-home
+grep -q 'text="Popular right now"' "$OUT/home.xml" && echo "PASS: Home suggests popular shows" || echo "WARNING: Home shows no suggestions yet"
 echo "PASS: Home"
 
 echo "--- Discover: Apple's top chart and search"
@@ -305,6 +308,22 @@ shot 13-awesome
 grep -q 'content-desc="Following How to Be Awesome at Your Job"' "$OUT/awesome-following.xml" \
   || fail "following How to Be Awesome at Your Job (a real 1,200-episode show) didn't work"
 echo "PASS: followed How to Be Awesome at Your Job"
+
+echo "--- Home with shows followed"
+dump before-home
+tap before-home "Home" last
+wait_for home-full 'text="Your shows"' 15 "Home doesn't list the shows you follow"
+grep -q 'text="Kural Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
+grep -q 'text="Latest from your shows"' "$OUT/home-full.xml" || fail "Home doesn't show the latest episodes from your shows"
+shot 14-home-following
+for _ in 1 2 3 4 5 6; do grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml" 2>/dev/null && break; scroll_down; dump home-full2; done
+shot 15-home-suggestions
+if grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml"; then
+  echo "PASS: Home suggests shows ($(grep -o 'text="Top in [^"]*"' "$OUT/home-full2.xml" | head -3 | tr '\n' ' '))"
+else
+  echo "WARNING: Home shows no suggestions"
+fi
+echo "PASS: Home lists your shows and their latest episodes"
 
 if adb logcat -d | grep -q "FATAL EXCEPTION"; then
   adb logcat -d > "$OUT/logcat.txt"

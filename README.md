@@ -25,7 +25,7 @@ Reddit, and from what users praise in the leading apps.
 
 | People asked for | In Kural |
 |---|---|
-| "Take me straight to my subscriptions, not ads for other shows" | **Home** opens on Continue listening, Up Next, mentions you follow and **New episodes**. Discover stays in its own tab. |
+| "Take me straight to my subscriptions, not ads for other shows" | **Home** opens on your own shows: Continue listening, **Your shows**, Up Next, **New episodes**, **Latest from your shows** and mentions you follow. **Suggestions** come last, picked from the top charts of the categories you listen to (a "Careers" show counts for Business), leaving out what you already follow. |
 | A queue you control (Pocket Casts' Up Next) | **Up Next**: play next / play last, drag ≡ to reorder, swipe to remove, total time left (adjusted for speed). Finished episodes leave by themselves. |
 | Inbox triage (Castro) | **New episodes** on Home, each with *Play next*, *Play last* or *Dismiss*. Nothing auto-plays unless you ask. |
 | Smart Speed and Voice Boost (Overcast), Trim Silence (Pocket Casts) | **Trim silence** and **Volume boost**, app-wide or per show. Speed goes from 0.5× to 3× in 0.05 steps. |

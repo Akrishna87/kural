@@ -7,6 +7,7 @@ import io.github.akrishna87.podcasts.data.Library
 import io.github.akrishna87.podcasts.data.Podcast
 import io.github.akrishna87.podcasts.feed.Directory
 import io.github.akrishna87.podcasts.feed.ParsedFeed
+import io.github.akrishna87.podcasts.feed.categoryNamed
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -175,5 +176,16 @@ class LibraryTest {
 
         assertEquals(1528390055L, Directory.appleIdIn("https://podcasts.apple.com/us/podcast/hard-fork/id1528390055?i=1000"))
         assertNull(Directory.appleIdIn("https://example.com/feed"))
+    }
+
+    @Test
+    fun feedCategoriesMapToDirectoryCategories() {
+        assertEquals("Business", categoryNamed("Careers")?.name)
+        assertEquals("Business", categoryNamed("business")?.name)
+        assertEquals("Society & Culture", categoryNamed("Society and Culture")?.name)
+        assertEquals("Education", categoryNamed("Self-Improvement")?.name)
+        assertEquals("News", categoryNamed("Tech News")?.name)
+        assertEquals(1318, categoryNamed("Technology")?.id)
+        assertNull(categoryNamed("Underwater basket weaving"))
     }
 }

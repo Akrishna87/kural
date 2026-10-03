@@ -21,30 +21,40 @@ data class DirectoryPodcast(
 /** An episode found by searching every podcast, with enough of its show to play and follow it. */
 data class DirectoryEpisode(val episode: Episode, val podcast: Podcast, val appleId: Long)
 
-/** Podcast categories in Apple's directory, with their genre ids. */
-data class Category(val id: Int, val name: String)
+/** Podcast categories in Apple's directory, with their genre ids and the subcategories under them. */
+data class Category(val id: Int, val name: String, val subcategories: List<String> = emptyList())
 
 val CATEGORIES = listOf(
-    Category(1489, "News"),
-    Category(1303, "Comedy"),
+    Category(1489, "News", listOf("Business News", "Daily News", "Entertainment News", "News Commentary", "Politics", "Sports News", "Tech News")),
+    Category(1303, "Comedy", listOf("Comedy Interviews", "Improv", "Stand-Up")),
     Category(1488, "True Crime"),
-    Category(1324, "Society & Culture"),
-    Category(1321, "Business"),
+    Category(1324, "Society & Culture", listOf("Documentary", "Personal Journals", "Philosophy", "Places & Travel", "Relationships")),
+    Category(1321, "Business", listOf("Careers", "Entrepreneurship", "Investing", "Management", "Marketing", "Non-Profit")),
     Category(1318, "Technology"),
-    Category(1533, "Science"),
+    Category(1533, "Science", listOf("Astronomy", "Chemistry", "Earth Sciences", "Life Sciences", "Mathematics", "Natural Sciences", "Nature", "Physics", "Social Sciences")),
     Category(1487, "History"),
-    Category(1512, "Health & Fitness"),
-    Category(1545, "Sports"),
-    Category(1309, "TV & Film"),
-    Category(1304, "Education"),
-    Category(1301, "Arts"),
-    Category(1310, "Music"),
-    Category(1305, "Kids & Family"),
-    Category(1483, "Fiction"),
-    Category(1502, "Leisure"),
-    Category(1314, "Religion & Spirituality"),
+    Category(1512, "Health & Fitness", listOf("Alternative Health", "Fitness", "Medicine", "Mental Health", "Nutrition", "Sexuality")),
+    Category(1545, "Sports", listOf("Baseball", "Basketball", "Cricket", "Fantasy Sports", "Football", "Golf", "Hockey", "Rugby", "Running", "Soccer", "Swimming", "Tennis", "Volleyball", "Wilderness", "Wrestling")),
+    Category(1309, "TV & Film", listOf("After Shows", "Film History", "Film Interviews", "Film Reviews", "TV Reviews")),
+    Category(1304, "Education", listOf("Courses", "How To", "Language Learning", "Self-Improvement")),
+    Category(1301, "Arts", listOf("Books", "Design", "Fashion & Beauty", "Food", "Performing Arts", "Visual Arts")),
+    Category(1310, "Music", listOf("Music Commentary", "Music History", "Music Interviews")),
+    Category(1305, "Kids & Family", listOf("Education for Kids", "Parenting", "Pets & Animals", "Stories for Kids")),
+    Category(1483, "Fiction", listOf("Comedy Fiction", "Drama", "Science Fiction")),
+    Category(1502, "Leisure", listOf("Animation & Manga", "Automotive", "Aviation", "Crafts", "Games", "Hobbies", "Home & Garden", "Video Games")),
+    Category(1314, "Religion & Spirituality", listOf("Buddhism", "Christianity", "Hinduism", "Islam", "Judaism", "Religion", "Spirituality")),
     Category(1511, "Government"),
 )
+
+private fun normaliseCategory(s: String) = s.lowercase().replace("&amp;", "&").replace(" and ", " & ").replace(Regex("\\s+"), " ").trim()
+
+/** The directory category a feed's category (or subcategory, like "Careers") belongs to. */
+fun categoryNamed(name: String): Category? {
+    val n = normaliseCategory(name)
+    if (n.isEmpty()) return null
+    return CATEGORIES.firstOrNull { normaliseCategory(it.name) == n }
+        ?: CATEGORIES.firstOrNull { c -> c.subcategories.any { normaliseCategory(it) == n } }
+}
 
 /**
  * Apple's public podcast directory: the same search AntennaPod and most podcast apps use. No

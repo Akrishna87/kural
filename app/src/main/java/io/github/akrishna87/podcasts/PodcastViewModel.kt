@@ -36,6 +36,7 @@ import io.github.akrishna87.podcasts.data.PodcastSettings
 import io.github.akrishna87.podcasts.data.Stats
 import io.github.akrishna87.podcasts.feed.CATEGORIES
 import io.github.akrishna87.podcasts.feed.Category
+import io.github.akrishna87.podcasts.feed.categoryNamed
 import io.github.akrishna87.podcasts.feed.ChaptersJson
 import io.github.akrishna87.podcasts.feed.Directory
 import io.github.akrishna87.podcasts.feed.DirectoryEpisode
@@ -99,6 +100,8 @@ data class Snapshot(
     val shows: List<ShowRow> = emptyList(),
     val queue: List<Episode> = emptyList(),
     val newEpisodes: List<Episode> = emptyList(),
+    /** The newest episodes you haven't heard from the shows you follow. */
+    val latest: List<Episode> = emptyList(),
     val inProgress: List<Episode> = emptyList(),
     val downloads: List<Episode> = emptyList(),
     val starred: List<Episode> = emptyList(),
@@ -213,10 +216,18 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
             val eps = lib.episodes(entry.id)
             ShowRow(entry, eps.firstOrNull()?.publishedAt ?: 0, eps.count { lib.state(it.id)?.played != true && it.type != "trailer" })
         }.sortedByDescending { it.latestAt }
+        val queue = lib.queueEpisodes()
+        val newEpisodes = lib.newEpisodes().map { it.first }
+        val skip = (queue + newEpisodes).mapTo(HashSet()) { it.id }
+        val latest = shows.flatMap { row -> lib.episodes(row.entry.id).take(3) }
+            .filter { it.id !in skip && it.type != "trailer" && lib.state(it.id)?.let { s -> s.played || s.inProgress } != true }
+            .sortedByDescending { it.publishedAt }
+            .take(12)
         return Snapshot(
             shows = shows,
-            queue = lib.queueEpisodes(),
-            newEpisodes = lib.newEpisodes().map { it.first },
+            queue = queue,
+            newEpisodes = newEpisodes,
+            latest = latest,
             inProgress = lib.inProgress().map { it.first }.filter { it.id != lib.queue().firstOrNull() }.take(20),
             downloads = lib.downloads().map { it.first },
             starred = lib.starred().map { it.first },
@@ -620,6 +631,47 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     val categories get() = CATEGORIES
+
+    // ----- Suggestions -----
+
+    /** A row of suggested shows, with why they're suggested. */
+    data class Suggestion(val title: String, val shows: List<DirectoryPodcast>, val category: Category?)
+
+    var suggestions by mutableStateOf<List<Suggestion>>(emptyList()); private set
+    var suggestionsLoading by mutableStateOf(false); private set
+    private var suggestionsFor: String? = null
+
+    /**
+     * Suggestions from the top charts of the categories you listen to most (subcategories like
+     * "Careers" count for their category), leaving out shows you already follow. With nothing
+     * followed yet, what's popular in your country.
+     */
+    fun loadSuggestions(force: Boolean = false) {
+        val subs = lib.subscriptions()
+        val key = subs.map { it.id }.sorted().joinToString("|")
+        if (!force && key == suggestionsFor && (suggestions.isNotEmpty() || suggestionsLoading)) return
+        suggestionsFor = key
+        suggestionsLoading = true
+        viewModelScope.launch {
+            try {
+                val followed = subs.mapTo(HashSet()) { it.podcast.title.lowercase().trim() }
+                val ranked = subs.flatMap { e -> e.podcast.categories.mapNotNull(::categoryNamed).distinct() }
+                    .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key }.take(3)
+                val sections: List<Category?> = if (ranked.size >= 2) ranked else ranked + listOf(null)
+                val charts = sections.map { c ->
+                    async(Dispatchers.IO) { c to runCatching { Directory.top(c?.id) }.getOrDefault(emptyList()) }
+                }.awaitAll()
+                val seen = HashSet<Long>()
+                suggestions = charts.mapNotNull { (c, shows) ->
+                    val fresh = shows.filter { it.title.lowercase().trim() !in followed && seen.add(it.appleId) }.take(15)
+                    if (fresh.isEmpty()) null
+                    else Suggestion(if (c == null) (if (subs.isEmpty()) "Popular right now" else "Popular everywhere") else "Top in ${c.name}", fresh, c)
+                }
+            } finally {
+                suggestionsLoading = false
+            }
+        }
+    }
 
     /** Searches the directory (or a feed address you typed). */
     fun search() {
