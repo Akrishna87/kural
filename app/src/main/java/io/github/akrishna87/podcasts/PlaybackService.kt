@@ -8,6 +8,7 @@ import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.Process
 import android.os.SystemClock
+import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -465,23 +466,11 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /**
-     * The player as the outside world sees it: skips use your skip lengths, and the
-     * next/previous buttons on headphones and in the car skip time (or change episode if you
-     * turned that off), because podcasts don't have tracks to skip.
+     * The player as the outside world sees it: skips use your skip lengths, and next/previous
+     * (headphones, the car) skip time, or change episode if you turned that off, because
+     * podcasts don't have tracks to skip.
      */
     private inner class PodcastPlayer(p: ExoPlayer) : ForwardingPlayer(p) {
-        private val extra = Player.Commands.Builder()
-            .addAll(Player.COMMAND_SEEK_BACK, Player.COMMAND_SEEK_FORWARD, Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_PREVIOUS)
-            .build()
-
-        override fun getAvailableCommands(): Player.Commands {
-            val b = super.getAvailableCommands().buildUpon()
-            for (i in 0 until extra.size()) b.add(extra.get(i))
-            return b.build()
-        }
-
-        override fun isCommandAvailable(command: Int): Boolean = extra.contains(command) || super.isCommandAvailable(command)
-
         override fun getSeekBackIncrement(): Long = Settings.skipBackSec(prefs) * 1000L
 
         override fun getSeekForwardIncrement(): Long = Settings.skipForwardSec(prefs) * 1000L
@@ -504,10 +493,6 @@ class PlaybackService : MediaLibraryService() {
 
         override fun seekToPreviousMediaItem() = seekToPrevious()
 
-        override fun hasNextMediaItem(): Boolean = true
-
-        override fun hasPreviousMediaItem(): Boolean = true
-
         private fun nextEpisode() {
             val id = exo.currentMediaItem?.mediaId ?: return
             savePosition(notify = false)
@@ -523,6 +508,23 @@ class PlaybackService : MediaLibraryService() {
     private inner class SessionCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
+            // The notification and lock screen: without next/previous, the skip back/forward
+            // buttons take their places, as in other podcast apps.
+            if (session.isMediaNotificationController(controller)) {
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                    .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS)
+                    .setAvailablePlayerCommands(
+                        MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                            .removeAll(
+                                Player.COMMAND_SEEK_TO_PREVIOUS,
+                                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                                Player.COMMAND_SEEK_TO_NEXT,
+                                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                            )
+                            .build(),
+                    )
+                    .build()
+            }
             if (isOwnApp(controller) || isCar(session, controller)) {
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS)
@@ -545,6 +547,24 @@ class PlaybackService : MediaLibraryService() {
         }
 
         private fun isOwnApp(controller: MediaSession.ControllerInfo) = controller.uid == Process.myUid()
+
+        /**
+         * Next/previous on headphones and Bluetooth: handled here, since the notification (which
+         * these presses come through) has no next/previous of its own.
+         */
+        override fun onMediaButtonEvent(session: MediaSession, controllerInfo: MediaSession.ControllerInfo, intent: Intent): Boolean {
+            @Suppress("DEPRECATION")
+            val key = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT) ?: return false
+            if (key.action != KeyEvent.ACTION_DOWN) return false
+            when (key.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> player.seekToNext()
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> player.seekToPrevious()
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> player.seekForward()
+                KeyEvent.KEYCODE_MEDIA_REWIND -> player.seekBack()
+                else -> return false
+            }
+            return true
+        }
 
         private fun isCar(session: MediaSession, controller: MediaSession.ControllerInfo) =
             session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)

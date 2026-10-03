@@ -57,7 +57,7 @@ fun SettingsScreen(vm: PodcastViewModel) {
                 Toggle(
                     "Headphone buttons skip time",
                     Settings.buttonsSkip(p),
-                    "Next/previous on headphones, the car and the lock screen skip forward/back instead of changing episode",
+                    "Next/previous on headphones and in the car skip forward/back instead of changing episode",
                 ) { vm.setting(Settings.BUTTONS_SKIP, it) }
                 Toggle("Autoplay", Settings.autoplay(p), "When Up Next runs out, play the show's next episode") { vm.setting(Settings.AUTOPLAY, it) }
             }

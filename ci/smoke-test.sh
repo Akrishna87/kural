@@ -216,6 +216,12 @@ playing || fail "playback stopped when the app went to the background"
 adb shell cmd statusbar expand-notifications
 sleep 2
 shot 9-notification
+dump notification
+if grep -q 'content-desc="Forward 30 seconds"' "$OUT/notification.xml"; then
+  echo "PASS: the media controls show skip buttons"
+else
+  echo "WARNING: the media controls don't show the skip buttons"
+fi
 adb shell cmd statusbar collapse
 echo "PASS: keeps playing in the background"
 
