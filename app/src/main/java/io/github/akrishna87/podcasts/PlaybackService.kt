@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
+import android.os.Bundle
 import android.os.Process
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -27,6 +28,9 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -59,6 +63,10 @@ class PlaybackService : MediaLibraryService() {
         private const val FADE_MS = 10_000L
         /** Volume boost, in millibels: about what Overcast's Voice Boost adds to quiet shows. */
         private const val BOOST_MB = 900
+        /** The notification's skip buttons, as commands the system media controls can show. */
+        private const val CMD_BACK = "io.github.akrishna87.podcasts.SKIP_BACK"
+        private const val CMD_FORWARD = "io.github.akrishna87.podcasts.SKIP_FORWARD"
+        private val SKIP_COMMANDS = listOf(SessionCommand(CMD_BACK, Bundle.EMPTY), SessionCommand(CMD_FORWARD, Bundle.EMPTY))
     }
 
     private lateinit var lib: Library
@@ -80,7 +88,7 @@ class PlaybackService : MediaLibraryService() {
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
-            Settings.SKIP_BACK, Settings.SKIP_FORWARD -> session?.setMediaButtonPreferences(skipButtons())
+            Settings.SKIP_BACK, Settings.SKIP_FORWARD -> session?.setCustomLayout(skipButtons())
             else -> applyEffects()
         }
     }
@@ -118,7 +126,7 @@ class PlaybackService : MediaLibraryService() {
         )
         session = MediaLibrarySession.Builder(this, player, SessionCallback())
             .setSessionActivity(openApp)
-            .setMediaButtonPreferences(skipButtons())
+            .setCustomLayout(skipButtons())
             .build()
 
         exo.addListener(object : Player.Listener {
@@ -445,7 +453,7 @@ class PlaybackService : MediaLibraryService() {
                     else -> CommandButton.ICON_SKIP_BACK
                 },
             )
-                .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+                .setSessionCommand(SKIP_COMMANDS[0])
                 .setDisplayName("Back $back seconds")
                 .setSlots(CommandButton.SLOT_BACK)
                 .build(),
@@ -458,7 +466,7 @@ class PlaybackService : MediaLibraryService() {
                     else -> CommandButton.ICON_SKIP_FORWARD
                 },
             )
-                .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+                .setSessionCommand(SKIP_COMMANDS[1])
                 .setDisplayName("Forward $forward seconds")
                 .setSlots(CommandButton.SLOT_FORWARD)
                 .build(),
@@ -512,7 +520,7 @@ class PlaybackService : MediaLibraryService() {
             // buttons take their places, as in other podcast apps.
             if (session.isMediaNotificationController(controller)) {
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                    .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS)
+                    .setAvailableSessionCommands(withSkips(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS))
                     .setAvailablePlayerCommands(
                         MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                             .removeAll(
@@ -527,7 +535,7 @@ class PlaybackService : MediaLibraryService() {
             }
             if (isOwnApp(controller) || isCar(session, controller)) {
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                    .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS)
+                    .setAvailableSessionCommands(withSkips(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS))
                     .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                     .build()
             }
@@ -547,6 +555,24 @@ class PlaybackService : MediaLibraryService() {
         }
 
         private fun isOwnApp(controller: MediaSession.ControllerInfo) = controller.uid == Process.myUid()
+
+        private fun withSkips(commands: SessionCommands): SessionCommands =
+            commands.buildUpon().apply { SKIP_COMMANDS.forEach { add(it) } }.build()
+
+        /** The skip buttons in the notification, lock screen and car. */
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                CMD_BACK -> player.seekBack()
+                CMD_FORWARD -> player.seekForward()
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
 
         /**
          * Next/previous on headphones and Bluetooth: handled here, since the notification (which
