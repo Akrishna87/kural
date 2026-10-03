@@ -25,6 +25,7 @@ import io.github.akrishna87.podcasts.data.PodcastEntry
 import io.github.akrishna87.podcasts.feed.Directory
 import io.github.akrishna87.podcasts.feed.FeedParser
 import io.github.akrishna87.podcasts.feed.Http
+import io.github.akrishna87.podcasts.feed.Streamed
 import io.github.akrishna87.podcasts.feed.ParsedFeed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -33,6 +34,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** Reads feeds: on demand, when you pull to refresh, and in the background on a schedule. */
@@ -40,10 +42,16 @@ object Refresher {
 
     class Result(val newEpisodes: Int, val failed: Int)
 
-    /** Fetches and reads a feed, following the address's redirects. */
+    /** Reads a feed as it downloads (some are tens of megabytes), following the address's redirects. */
+    private fun read(url: String, etag: String? = null, lastModified: String? = null): Streamed<ParsedFeed> = try {
+        Http.stream(url, etag, lastModified) { reader -> FeedParser.parse(reader, url) }
+    } catch (e: OutOfMemoryError) {
+        throw IOException("This show's feed is too big for this phone to read", e)
+    }
+
+    /** Fetches and reads a feed. */
     suspend fun fetchFeed(url: String): ParsedFeed = withContext(Dispatchers.IO) {
-        val r = Http.fetch(url)
-        FeedParser.parse(r.body, url)
+        read(url).value ?: throw IOException("The feed came back empty")
     }
 
     /** Follows a show: reads its feed and stores it as subscribed. */
@@ -51,8 +59,9 @@ object Refresher {
         val lib = context.library()
         val existing = lib.findByFeed(url)
         val feedUrl = existing?.id ?: url
-        val r = Http.fetch(feedUrl)
-        lib.storeFeed(FeedParser.parse(r.body, feedUrl), subscribe = true, etag = r.etag, lastModified = r.lastModified)
+        val r = read(feedUrl)
+        val feed = r.value ?: throw IOException("The feed came back empty")
+        lib.storeFeed(feed, subscribe = true, etag = r.etag, lastModified = r.lastModified)
         lib.entry(feedUrl)!!
     }
 
@@ -89,12 +98,13 @@ object Refresher {
 
     private fun refreshOne(context: Context, entry: PodcastEntry): List<Episode> {
         val lib = context.library()
-        val r = Http.fetch(entry.id, etag = entry.etag, lastModified = entry.lastModified)
-        if (r.notModified) {
+        val r = read(entry.id, etag = entry.etag, lastModified = entry.lastModified)
+        val feed = r.value
+        if (r.notModified || feed == null) {
             lib.markRefreshed(entry.id)
             return emptyList()
         }
-        return lib.storeFeed(FeedParser.parse(r.body, entry.id), etag = r.etag, lastModified = r.lastModified)
+        return lib.storeFeed(feed, etag = r.etag, lastModified = r.lastModified)
     }
 
     /** New episodes go to the inbox, and to Up Next, the phone and a notification if the show asks. */

@@ -221,7 +221,12 @@ private fun ShowResultRow(vm: PodcastViewModel, p: DirectoryPodcast) {
             if (meta.isNotEmpty()) Text(meta, color = Palette.Faint, fontSize = 12.sp)
         }
         val feed = p.feedUrl
-        if (feed != null) {
+        if (feed != null && feed in vm.subscribing) {
+            // Big shows (thousands of episodes) take a while to read.
+            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp)
+            }
+        } else if (feed != null) {
             IconButton(onClick = { if (!following) vm.subscribe(feed) }) {
                 Icon(
                     if (following) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline,

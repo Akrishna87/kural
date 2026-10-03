@@ -141,10 +141,15 @@ private fun ShowPage(vm: PodcastViewModel, feedUrl: String) {
                                     Text("Following")
                                 }
                             } else {
-                                Button(onClick = { vm.subscribe(feedUrl) }, enabled = feedUrl !in vm.subscribing) {
-                                    Icon(Icons.Rounded.Add, contentDescription = null)
+                                val busy = feedUrl in vm.subscribing
+                                Button(onClick = { vm.subscribe(feedUrl) }, enabled = !busy) {
+                                    if (busy) {
+                                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                    } else {
+                                        Icon(Icons.Rounded.Add, contentDescription = null)
+                                    }
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Follow")
+                                    Text(if (busy) "Following…" else "Follow")
                                 }
                             }
                             // Start a serial from the beginning, or the newest of anything else.

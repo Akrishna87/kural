@@ -5,213 +5,430 @@ import io.github.akrishna87.podcasts.data.Episode
 import io.github.akrishna87.podcasts.data.Person
 import io.github.akrishna87.podcasts.data.Podcast
 import io.github.akrishna87.podcasts.data.TranscriptRef
-import org.w3c.dom.Element
+import org.xml.sax.Attributes
+import org.xml.sax.InputSource
+import org.xml.sax.SAXException
+import org.xml.sax.helpers.DefaultHandler
 import java.io.IOException
+import java.io.Reader
+import java.io.StringReader
+import javax.xml.parsers.SAXParserFactory
 
 class ParsedFeed(val podcast: Podcast, val episodes: List<Episode>)
 
 /**
  * Reads podcast feeds: RSS 2.0 with the iTunes tags, the Podcasting 2.0 namespace (chapters,
  * transcripts, people, funding) and Podlove Simple Chapters, plus Atom feeds.
+ *
+ * Feeds are read as they stream in, keeping only what's needed, so shows with thousands of
+ * episodes and tens of megabytes of show notes load without running the phone out of memory.
  */
 object FeedParser {
     /** Keep this many of a show's newest episodes. */
     const val MAX_EPISODES = 500
     /** Show notes longer than this are cut (some feeds paste whole transcripts in). */
     private const val MAX_NOTES = 12_000
+    /** Text kept while reading one element; notes are cut to [MAX_NOTES] afterwards. */
+    private const val MAX_TEXT = 40_000
 
-    private val NS = mapOf(
-        "itunes" to setOf("http://www.itunes.com/dtds/podcast-1.0.dtd", "http://www.itunes.com/DTDs/Podcast-1.0.dtd"),
-        "podcast" to setOf(
+    private val NS: Map<String, String> = buildMap {
+        listOf("http://www.itunes.com/dtds/podcast-1.0.dtd", "http://www.itunes.com/DTDs/Podcast-1.0.dtd").forEach { put(it, "itunes") }
+        listOf(
             "https://podcastindex.org/namespace/1.0",
             "http://podcastindex.org/namespace/1.0",
             "https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md",
-        ),
-        "psc" to setOf("http://podlove.org/simple-chapters", "http://podlove.org/simple-chapters/"),
-        "content" to setOf("http://purl.org/rss/1.0/modules/content/"),
-        "media" to setOf("http://search.yahoo.com/mrss/", "http://search.yahoo.com/mrss"),
-        "googleplay" to setOf("http://www.google.com/schemas/play-podcasts/1.0"),
-        "dc" to setOf("http://purl.org/dc/elements/1.1/"),
-        "atom" to setOf("http://www.w3.org/2005/Atom"),
-    )
+        ).forEach { put(it, "podcast") }
+        listOf("http://podlove.org/simple-chapters", "http://podlove.org/simple-chapters/").forEach { put(it, "psc") }
+        put("http://purl.org/rss/1.0/modules/content/", "content")
+        listOf("http://search.yahoo.com/mrss/", "http://search.yahoo.com/mrss").forEach { put(it, "media") }
+        put("http://www.google.com/schemas/play-podcasts/1.0", "googleplay")
+        put("http://purl.org/dc/elements/1.1/", "dc")
+        put("http://www.w3.org/2005/Atom", "atom")
+        // RSS 1.0 (RDF) elements count as plain RSS.
+        put("http://purl.org/rss/1.0/", "")
+    }
 
-    /** Namespaced children, matched by namespace or, for feeds that get the namespace wrong, by prefix. */
-    private fun Element.ns(prefix: String, local: String): List<Element> {
-        val out = ArrayList<Element>()
-        val kids = childNodes
-        for (i in 0 until kids.length) {
-            val k = kids.item(i)
-            if (k !is Element) continue
-            val name = k.localName ?: k.nodeName.substringAfter(':')
-            if (name != local) continue
-            val uri = k.namespaceURI
-            if ((uri != null && uri in NS.getValue(prefix)) || k.prefix == prefix || k.nodeName == "$prefix:$local") out += k
+    /** Elements whose content is HTML: nested tags are kept as text. */
+    private val RICH = setOf("description", "content:encoded", "itunes:summary", "summary", "content", "subtitle")
+
+    fun parse(xml: String, feedUrl: String): ParsedFeed = parse(StringReader(xml), feedUrl)
+
+    fun parse(reader: Reader, feedUrl: String): ParsedFeed {
+        val handler = Handler(feedUrl)
+        try {
+            val factory = SAXParserFactory.newInstance()
+            factory.isNamespaceAware = true
+            factory.isValidating = false
+            listOf(
+                "http://xml.org/sax/features/external-general-entities",
+                "http://xml.org/sax/features/external-parameter-entities",
+                "http://apache.org/xml/features/nonvalidating/load-external-dtd",
+            ).forEach { runCatching { factory.setFeature(it, false) } }
+            factory.newSAXParser().parse(InputSource(CleaningReader(reader)), handler)
+        } catch (e: NotAFeed) {
+            throw IOException("This doesn't look like a podcast feed")
+        } catch (e: SAXException) {
+            // A feed that breaks off part-way still gives us everything before the break.
+            if (handler.title.isEmpty() || handler.episodes.isEmpty()) throw IOException("This doesn't look like a podcast feed", e)
         }
-        return out
+        if (handler.mode == Mode.UNKNOWN) throw IOException("This doesn't look like a podcast feed")
+        return handler.result()
     }
 
-    private fun Element.ns1(prefix: String, local: String): Element? = ns(prefix, local).firstOrNull()
+    private class NotAFeed : SAXException("not a feed")
 
-    private fun Element.plain(local: String): Element? = plainChildren(local).firstOrNull()
+    private enum class Mode { UNKNOWN, RSS, ATOM }
 
-    fun parse(xml: String, feedUrl: String): ParsedFeed {
-        val doc = try {
-            parseXml(xml)
-        } catch (e: Exception) {
-            throw IOException("This doesn't look like a podcast feed", e)
+    /** One episode as it's being read. */
+    private class ItemBuilder {
+        var title = ""
+        var itunesTitle = ""
+        var guid = ""
+        val notes = ArrayList<String>()
+        var enclosureUrl = ""
+        var enclosureType = ""
+        var enclosureLength = ""
+        var mediaUrl = ""
+        var mediaType = ""
+        var mediaDuration = ""
+        var pubDate = ""
+        var duration = ""
+        var image = ""
+        var chaptersUrl = ""
+        val chapters = ArrayList<Chapter>()
+        val transcripts = ArrayList<TranscriptRef>()
+        val persons = ArrayList<Person>()
+        var link = ""
+        var season = ""
+        var number = ""
+        var type = ""
+        var explicit = ""
+        var atomId = ""
+    }
+
+    private class Handler(val feedUrl: String) : DefaultHandler() {
+        var mode = Mode.UNKNOWN
+        private val stack = ArrayList<String>()
+        private val text = StringBuilder()
+        /** Depth of the rich (HTML) element being read, or -1. */
+        private var richDepth = -1
+
+        // The show.
+        var title = ""
+        private var itunesTitle = ""
+        private var author = ""
+        private var googleAuthor = ""
+        private var editor = ""
+        private val showNotes = ArrayList<String>()
+        private var image = ""
+        private var imageUrl = ""
+        private var thumbnail = ""
+        private var googleImage = ""
+        private var link = ""
+        private val categories = LinkedHashSet<String>()
+        private var type = ""
+        private var fundingUrl = ""
+        private var fundingLabel = ""
+        private val showPeople = ArrayList<Person>()
+        private var personAttrs: Triple<String, String, String>? = null
+
+        // Episodes.
+        val episodes = ArrayList<Episode>()
+        private var item: ItemBuilder? = null
+
+        private fun nameOf(uri: String?, local: String?, qName: String): String {
+            val localName = local?.takeIf { it.isNotEmpty() } ?: qName.substringAfter(':')
+            val prefix = when {
+                uri.isNullOrEmpty() -> if (':' in qName) qName.substringBefore(':') else ""
+                mode == Mode.ATOM && uri == "http://www.w3.org/2005/Atom" -> ""
+                else -> NS[uri] ?: if (':' in qName) qName.substringBefore(':') else "?"
+            }
+            return if (prefix.isEmpty()) localName else "$prefix:$localName"
         }
-        val root = doc.documentElement ?: throw IOException("The feed is empty")
-        return when (root.localName ?: root.nodeName) {
-            "rss" -> parseRss(root.plain("channel") ?: root.child("channel") ?: throw IOException("The feed has no channel"), feedUrl)
-            "feed" -> parseAtom(root, feedUrl)
-            "RDF" -> parseRss(root, feedUrl) // RSS 1.0: items sit next to the channel
-            else -> throw IOException("This doesn't look like a podcast feed")
+
+        private fun parent(): String = stack.getOrElse(stack.size - 2) { "" }
+
+        private fun grandparent(): String = stack.getOrElse(stack.size - 3) { "" }
+
+        private fun attr(a: Attributes, local: String): String {
+            for (i in 0 until a.length) {
+                val ln = a.getLocalName(i)?.takeIf { it.isNotEmpty() } ?: a.getQName(i)
+                if (ln == local || ln.endsWith(":$local")) return a.getValue(i).orEmpty().trim()
+            }
+            return ""
         }
-    }
 
-    private fun parseRss(channel: Element, feedUrl: String): ParsedFeed {
-        val title = channel.plain("title")?.text ?: channel.ns1("itunes", "title")?.text ?: ""
-        val artwork = channel.ns1("itunes", "image")?.attr("href")?.takeIf { it.isNotBlank() }
-            ?: channel.plain("image")?.plain("url")?.text?.takeIf { it.isNotBlank() }
-            ?: channel.ns1("media", "thumbnail")?.attr("url")?.takeIf { it.isNotBlank() }
-            ?: channel.ns1("googleplay", "image")?.attr("href")?.takeIf { it.isNotBlank() }
-        val categories = channel.descendants("category")
-            .filter { it.namespaceURI in NS.getValue("itunes") || it.prefix == "itunes" }
-            .map { it.attr("text") }
-            .filter { it.isNotBlank() }
-            .distinct()
-        val funding = channel.ns1("podcast", "funding")
-        val podcast = Podcast(
-            feedUrl = feedUrl,
-            title = title.ifBlank { feedUrl },
-            author = channel.ns1("itunes", "author")?.text?.takeIf { it.isNotBlank() }
-                ?: channel.ns1("googleplay", "author")?.text?.takeIf { it.isNotBlank() }
-                ?: channel.plain("managingEditor")?.text?.replace(Regex("^\\S+@\\S+\\s*\\((.*)\\)$"), "$1").orEmpty(),
-            description = longest(
-                channel.plain("description")?.rawText,
-                channel.ns1("itunes", "summary")?.rawText,
-                channel.ns1("content", "encoded")?.rawText,
-            ),
-            artworkUrl = artwork?.let { resolveUrl(feedUrl, it) },
-            link = channel.plain("link")?.text?.takeIf { it.startsWith("http") },
-            categories = categories,
-            serial = channel.ns1("itunes", "type")?.text.equals("serial", ignoreCase = true),
-            fundingUrl = funding?.attr("url")?.takeIf { it.startsWith("http") },
-            fundingLabel = funding?.text?.takeIf { it.isNotBlank() },
-        )
-        val showPeople = channel.ns("podcast", "person").mapNotNull(::person)
-        val items = channel.plainChildren("item").ifEmpty { channel.ownerDocument.documentElement.plainChildren("item") }
-        val episodes = items.mapNotNull { parseItem(it, podcast, showPeople) }
-        return ParsedFeed(podcast, newestFirst(episodes))
-    }
-
-    private fun parseItem(item: Element, podcast: Podcast, showPeople: List<Person>): Episode? {
-        val feedUrl = podcast.feedUrl
-        val enclosure = item.plain("enclosure")
-        val media = item.ns("media", "content").firstOrNull { it.attr("type").startsWith("audio") || it.attr("medium") == "audio" }
-            ?: item.ns("media", "group").flatMap { it.ns("media", "content") }.firstOrNull { it.attr("type").startsWith("audio") }
-        val rawUrl = enclosure?.attr("url")?.takeIf { it.isNotBlank() } ?: media?.attr("url")?.takeIf { it.isNotBlank() } ?: return null
-        val audioUrl = resolveUrl(feedUrl, rawUrl)
-        val type = (enclosure?.attr("type") ?: media?.attr("type")).orEmpty().ifBlank { guessType(audioUrl) }
-        if (!(type.startsWith("audio") || type.startsWith("video") || type.isBlank())) return null
-
-        val title = item.plain("title")?.text?.takeIf { it.isNotBlank() } ?: item.ns1("itunes", "title")?.text.orEmpty()
-        val guid = item.plain("guid")?.text?.takeIf { it.isNotBlank() } ?: audioUrl
-        val notes = longest(
-            item.ns1("content", "encoded")?.rawText,
-            item.plain("description")?.rawText,
-            item.ns1("itunes", "summary")?.rawText,
-        )
-        val published = parseDate(item.plain("pubDate")?.text ?: item.ns1("dc", "date")?.text)
-        val itunesImage = item.ns1("itunes", "image")?.attr("href")?.takeIf { it.isNotBlank() }
-        val chapterFile = item.ns("podcast", "chapters").firstOrNull()?.attr("url")?.takeIf { it.isNotBlank() }
-        val inline = item.ns1("psc", "chapters")?.ns("psc", "chapter")?.mapNotNull { c ->
-            val start = parseClock(c.attr("start"))
-            if (start < 0) null
-            else Chapter(
-                start,
-                decodeEntities(c.attr("title")).trim(),
-                c.attr("href").takeIf { it.startsWith("http") },
-                c.attr("image").takeIf { it.startsWith("http") },
-            )
-        }.orEmpty().sortedBy { it.startMs }
-        val transcripts = item.ns("podcast", "transcript").mapNotNull { t ->
-            val url = t.attr("url").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            TranscriptRef(resolveUrl(feedUrl, url), t.attr("type").lowercase(), t.attr("language").takeIf { it.isNotBlank() })
+        override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
+            if (mode == Mode.UNKNOWN) {
+                val root = localName?.takeIf { it.isNotEmpty() } ?: qName.substringAfter(':')
+                mode = when (root) {
+                    "rss", "RDF" -> Mode.RSS
+                    "feed" -> Mode.ATOM
+                    else -> throw NotAFeed()
+                }
+            }
+            val name = nameOf(uri, localName, qName)
+            stack += name
+            if (richDepth >= 0) {
+                // HTML written straight into the feed: keep the tags as text.
+                if (text.length < MAX_TEXT) {
+                    text.append('<').append(localName ?: qName)
+                    for (i in 0 until attributes.length) {
+                        text.append(' ').append(attributes.getQName(i)).append("=\"").append(attributes.getValue(i).replace("\"", "&quot;")).append('"')
+                    }
+                    text.append('>')
+                }
+                return
+            }
+            text.setLength(0)
+            if (name in RICH) richDepth = stack.size
+            if (mode == Mode.ATOM) atomStart(name, attributes) else rssStart(name, attributes)
         }
-        val people = item.ns("podcast", "person").mapNotNull(::person).ifEmpty { showPeople }
-        val explicit = item.ns1("itunes", "explicit")?.text?.lowercase()
-        return Episode(
-            id = Episode.idFor(feedUrl, guid),
-            podcastId = feedUrl,
-            guid = guid,
-            title = title.ifBlank { "Untitled episode" },
-            description = notes.take(MAX_NOTES),
-            audioUrl = audioUrl,
-            mimeType = type.ifBlank { "audio/mpeg" },
-            sizeBytes = enclosure?.attr("length")?.trim()?.toLongOrNull()?.takeIf { it > 1_000 } ?: 0,
-            durationSec = parseDurationSec(item.ns1("itunes", "duration")?.text).takeIf { it > 0 }
-                ?: media?.attr("duration")?.toLongOrNull() ?: 0,
-            publishedAt = published,
-            link = item.plain("link")?.text?.takeIf { it.startsWith("http") },
-            artworkUrl = itunesImage?.let { resolveUrl(feedUrl, it) },
-            season = item.ns1("itunes", "season")?.text?.toIntOrNull(),
-            number = item.ns1("itunes", "episode")?.text?.toIntOrNull(),
-            type = item.ns1("itunes", "episodeType")?.text?.lowercase()?.takeIf { it in setOf("full", "trailer", "bonus") } ?: "full",
-            explicit = explicit == "yes" || explicit == "true" || explicit == "explicit",
-            chaptersUrl = chapterFile?.let { resolveUrl(feedUrl, it) },
-            chapters = inline,
-            transcripts = transcripts,
-            persons = people,
-        )
-    }
 
-    private fun person(e: Element): Person? {
-        val name = e.text.takeIf { it.isNotBlank() } ?: return null
-        return Person(
-            name = name,
-            role = e.attr("role").lowercase().ifBlank { "host" },
-            imageUrl = e.attr("img").takeIf { it.startsWith("http") },
-            link = e.attr("href").takeIf { it.startsWith("http") },
-        )
-    }
+        override fun characters(ch: CharArray, start: Int, length: Int) {
+            val room = MAX_TEXT - text.length
+            if (room > 0) text.appendRange(ch, start, start + minOf(length, room))
+        }
 
-    private fun parseAtom(feed: Element, feedUrl: String): ParsedFeed {
-        val podcast = Podcast(
-            feedUrl = feedUrl,
-            title = feed.child("title")?.text.orEmpty().ifBlank { feedUrl },
-            author = feed.child("author")?.child("name")?.text.orEmpty(),
-            description = feed.child("subtitle")?.rawText ?: feed.ns1("itunes", "summary")?.rawText.orEmpty(),
-            artworkUrl = (feed.ns1("itunes", "image")?.attr("href")?.takeIf { it.isNotBlank() }
-                ?: feed.child("logo")?.text?.takeIf { it.isNotBlank() }
-                ?: feed.child("icon")?.text?.takeIf { it.isNotBlank() })?.let { resolveUrl(feedUrl, it) },
-            link = feed.children("link").firstOrNull { it.attr("rel").let { r -> r.isEmpty() || r == "alternate" } }?.attr("href"),
-        )
-        val episodes = feed.children("entry").mapNotNull { entry ->
-            val enclosure = entry.children("link").firstOrNull { it.attr("rel") == "enclosure" } ?: return@mapNotNull null
-            val url = resolveUrl(feedUrl, enclosure.attr("href"))
-            val guid = entry.child("id")?.text?.takeIf { it.isNotBlank() } ?: url
-            Episode(
+        override fun endElement(uri: String?, localName: String?, qName: String) {
+            if (richDepth >= 0 && stack.size > richDepth) {
+                if (text.length < MAX_TEXT) text.append("</").append(localName ?: qName).append('>')
+                stack.removeAt(stack.lastIndex)
+                return
+            }
+            richDepth = -1
+            val name = stack.last()
+            val raw = text.toString().trim()
+            text.setLength(0)
+            if (mode == Mode.ATOM) atomEnd(name, raw) else rssEnd(name, raw)
+            stack.removeAt(stack.lastIndex)
+        }
+
+        private fun tidy(s: String) = s.replace(Regex("\\s+"), " ").trim()
+
+        // ----- RSS -----
+
+        private fun rssStart(name: String, a: Attributes) {
+            val it = item
+            if (name == "item") {
+                item = ItemBuilder()
+                return
+            }
+            if (it != null) {
+                when (name) {
+                    "enclosure" -> if (it.enclosureUrl.isEmpty()) {
+                        it.enclosureUrl = attr(a, "url")
+                        it.enclosureType = attr(a, "type")
+                        it.enclosureLength = attr(a, "length")
+                    }
+                    "media:content" -> {
+                        val t = attr(a, "type")
+                        if (it.mediaUrl.isEmpty() && (t.startsWith("audio") || attr(a, "medium") == "audio")) {
+                            it.mediaUrl = attr(a, "url")
+                            it.mediaType = t
+                            it.mediaDuration = attr(a, "duration")
+                        }
+                    }
+                    "itunes:image" -> if (it.image.isEmpty()) it.image = attr(a, "href")
+                    "podcast:chapters" -> if (it.chaptersUrl.isEmpty()) it.chaptersUrl = attr(a, "url")
+                    "psc:chapter" -> {
+                        val start = parseClock(attr(a, "start"))
+                        if (start >= 0) {
+                            it.chapters += Chapter(
+                                start,
+                                decodeEntities(attr(a, "title")).trim(),
+                                attr(a, "href").takeIf { u -> u.startsWith("http") },
+                                attr(a, "image").takeIf { u -> u.startsWith("http") },
+                            )
+                        }
+                    }
+                    "podcast:transcript" -> attr(a, "url").takeIf { u -> u.isNotEmpty() }?.let { url ->
+                        it.transcripts += TranscriptRef(resolveUrl(feedUrl, url), attr(a, "type").lowercase(), attr(a, "language").takeIf { l -> l.isNotEmpty() })
+                    }
+                    "podcast:person" -> personAttrs = Triple(attr(a, "role"), attr(a, "img"), attr(a, "href"))
+                }
+                return
+            }
+            when (name) {
+                "itunes:image" -> if (image.isEmpty()) image = attr(a, "href")
+                "media:thumbnail" -> if (thumbnail.isEmpty()) thumbnail = attr(a, "url")
+                "googleplay:image" -> if (googleImage.isEmpty()) googleImage = attr(a, "href")
+                "itunes:category" -> attr(a, "text").takeIf { c -> c.isNotEmpty() }?.let { categories += decodeEntities(it) }
+                "podcast:funding" -> if (fundingUrl.isEmpty()) fundingUrl = attr(a, "url")
+                "podcast:person" -> personAttrs = Triple(attr(a, "role"), attr(a, "img"), attr(a, "href"))
+            }
+        }
+
+        private fun rssEnd(name: String, raw: String) {
+            val it = item
+            if (it != null) {
+                if (name == "item") {
+                    build(it)?.let(::add)
+                    item = null
+                    return
+                }
+                val inItem = parent() == "item"
+                when {
+                    name == "title" && inItem -> it.title = tidy(raw)
+                    name == "itunes:title" -> it.itunesTitle = tidy(raw)
+                    name == "guid" -> it.guid = tidy(raw)
+                    name == "description" || name == "content:encoded" || name == "itunes:summary" -> if (inItem) it.notes += raw
+                    name == "pubDate" || name == "dc:date" -> if (it.pubDate.isEmpty()) it.pubDate = tidy(raw)
+                    name == "itunes:duration" -> it.duration = tidy(raw)
+                    name == "link" && inItem -> it.link = tidy(raw)
+                    name == "itunes:season" -> it.season = tidy(raw)
+                    name == "itunes:episode" -> it.number = tidy(raw)
+                    name == "itunes:episodeType" -> it.type = tidy(raw).lowercase()
+                    name == "itunes:explicit" -> it.explicit = tidy(raw).lowercase()
+                    name == "podcast:person" -> person(raw)?.let { p -> it.persons += p }
+                }
+                return
+            }
+            val inChannel = parent() == "channel"
+            when {
+                name == "title" && inChannel -> title = tidy(raw)
+                name == "itunes:title" && inChannel -> itunesTitle = tidy(raw)
+                name == "link" && inChannel -> link = tidy(raw)
+                (name == "description" || name == "itunes:summary" || name == "content:encoded") && inChannel -> showNotes += raw
+                name == "itunes:author" -> author = tidy(raw)
+                name == "googleplay:author" -> googleAuthor = tidy(raw)
+                name == "managingEditor" -> editor = tidy(raw)
+                name == "url" && parent() == "image" && grandparent() == "channel" -> imageUrl = tidy(raw)
+                name == "itunes:type" -> type = tidy(raw)
+                name == "podcast:funding" -> if (fundingLabel.isEmpty()) fundingLabel = tidy(raw)
+                name == "podcast:person" -> person(raw)?.let { showPeople += it }
+            }
+        }
+
+        private fun person(raw: String): Person? {
+            val (role, img, href) = personAttrs ?: Triple("", "", "")
+            personAttrs = null
+            val name = tidy(raw).takeIf { it.isNotEmpty() } ?: return null
+            return Person(name, role.lowercase().ifBlank { "host" }, img.takeIf { it.startsWith("http") }, href.takeIf { it.startsWith("http") })
+        }
+
+        private fun build(it: ItemBuilder): Episode? {
+            val rawUrl = it.enclosureUrl.ifEmpty { it.mediaUrl }.ifEmpty { return null }
+            val audioUrl = resolveUrl(feedUrl, rawUrl)
+            val declared = it.enclosureType.ifEmpty { it.mediaType }
+            val type = when {
+                declared.startsWith("audio") || declared.startsWith("video") -> declared
+                // No type, or a vague one ("application/octet-stream"): go by the file's name.
+                declared.isBlank() || MEDIA_FILE.containsMatchIn(audioUrl.substringBefore('?')) -> guessType(audioUrl)
+                else -> return null // a PDF or picture, not an episode
+            }
+            val guid = it.guid.ifEmpty { audioUrl }
+            return Episode(
                 id = Episode.idFor(feedUrl, guid),
                 podcastId = feedUrl,
                 guid = guid,
-                title = entry.child("title")?.text.orEmpty().ifBlank { "Untitled episode" },
-                description = longest(entry.child("content")?.rawText, entry.child("summary")?.rawText).take(MAX_NOTES),
-                audioUrl = url,
-                mimeType = enclosure.attr("type").ifBlank { guessType(url) },
-                sizeBytes = enclosure.attr("length").toLongOrNull() ?: 0,
-                durationSec = parseDurationSec(entry.ns1("itunes", "duration")?.text),
-                publishedAt = parseDate(entry.child("published")?.text ?: entry.child("updated")?.text),
-                link = entry.children("link").firstOrNull { it.attr("rel").let { r -> r.isEmpty() || r == "alternate" } }?.attr("href"),
+                title = it.title.ifEmpty { it.itunesTitle }.ifBlank { "Untitled episode" },
+                description = longest(it.notes).take(MAX_NOTES),
+                audioUrl = audioUrl,
+                mimeType = type,
+                sizeBytes = it.enclosureLength.toLongOrNull()?.takeIf { s -> s > 1_000 } ?: 0,
+                durationSec = parseDurationSec(it.duration).takeIf { d -> d > 0 } ?: it.mediaDuration.toLongOrNull() ?: 0,
+                publishedAt = parseDate(it.pubDate),
+                link = it.link.takeIf { l -> l.startsWith("http") },
+                artworkUrl = it.image.takeIf { i -> i.isNotBlank() }?.let { i -> resolveUrl(feedUrl, i) },
+                season = it.season.toIntOrNull(),
+                number = it.number.toIntOrNull(),
+                type = it.type.takeIf { t -> t in setOf("full", "trailer", "bonus") } ?: "full",
+                explicit = it.explicit == "yes" || it.explicit == "true" || it.explicit == "explicit",
+                chaptersUrl = it.chaptersUrl.takeIf { c -> c.isNotBlank() }?.let { c -> resolveUrl(feedUrl, c) },
+                chapters = it.chapters.sortedBy { c -> c.startMs },
+                transcripts = it.transcripts.toList(),
+                persons = it.persons.toList(),
             )
         }
-        return ParsedFeed(podcast, newestFirst(episodes))
+
+        /** Keeps the list bounded: for shows with thousands of episodes, only the newest are kept. */
+        private fun add(e: Episode) {
+            episodes += e
+            if (episodes.size >= MAX_EPISODES * 2) {
+                val keep = episodes.sortedByDescending { it.publishedAt }.take(MAX_EPISODES)
+                episodes.clear()
+                episodes += keep
+            }
+        }
+
+        // ----- Atom -----
+
+        private fun atomStart(name: String, a: Attributes) {
+            if (name == "entry") {
+                item = ItemBuilder()
+                return
+            }
+            val it = item
+            if (name == "link") {
+                val rel = attr(a, "rel")
+                if (it != null) {
+                    when (rel) {
+                        "enclosure" -> if (it.enclosureUrl.isEmpty()) {
+                            it.enclosureUrl = attr(a, "href")
+                            it.enclosureType = attr(a, "type")
+                            it.enclosureLength = attr(a, "length")
+                        }
+                        "", "alternate" -> if (it.link.isEmpty()) it.link = attr(a, "href")
+                    }
+                } else if ((rel.isEmpty() || rel == "alternate") && link.isEmpty() && parent() == "feed") {
+                    link = attr(a, "href")
+                }
+            }
+            if (name == "itunes:image") {
+                if (it != null) it.image = attr(a, "href") else if (image.isEmpty()) image = attr(a, "href")
+            }
+        }
+
+        private fun atomEnd(name: String, raw: String) {
+            val it = item
+            if (it != null) {
+                when (name) {
+                    "entry" -> {
+                        if (it.guid.isEmpty()) it.guid = it.atomId
+                        build(it)?.let(::add)
+                        item = null
+                    }
+                    "id" -> it.atomId = tidy(raw)
+                    "title" -> if (parent() == "entry") it.title = tidy(raw)
+                    "content", "summary" -> it.notes += raw
+                    "published" -> it.pubDate = tidy(raw)
+                    "updated" -> if (it.pubDate.isEmpty()) it.pubDate = tidy(raw)
+                    "itunes:duration" -> it.duration = tidy(raw)
+                }
+                return
+            }
+            when {
+                name == "title" && parent() == "feed" -> title = tidy(raw)
+                name == "name" && parent() == "author" && grandparent() == "feed" -> author = tidy(raw)
+                name == "subtitle" || name == "itunes:summary" -> showNotes += raw
+                name == "logo" || name == "icon" -> if (imageUrl.isEmpty()) imageUrl = tidy(raw)
+            }
+        }
+
+        fun result(): ParsedFeed {
+            val art = listOf(image, imageUrl, thumbnail, googleImage).firstOrNull { it.isNotBlank() }
+            val podcast = Podcast(
+                feedUrl = feedUrl,
+                title = title.ifEmpty { itunesTitle }.ifBlank { feedUrl },
+                author = author.ifEmpty { googleAuthor }.ifEmpty { editor.replace(Regex("^\\S+@\\S+\\s*\\((.*)\\)$"), "$1") },
+                description = longest(showNotes),
+                artworkUrl = art?.let { resolveUrl(feedUrl, it) },
+                link = link.takeIf { it.startsWith("http") },
+                categories = categories.toList(),
+                serial = type.equals("serial", ignoreCase = true),
+                fundingUrl = fundingUrl.takeIf { it.startsWith("http") },
+                fundingLabel = fundingLabel.takeIf { it.isNotBlank() },
+            )
+            val list = episodes.distinctBy { it.id }.sortedByDescending { it.publishedAt }.take(MAX_EPISODES)
+                .map { e -> if (e.persons.isEmpty() && showPeople.isNotEmpty()) e.copy(persons = showPeople.toList()) else e }
+            return ParsedFeed(podcast, list)
+        }
     }
 
-    private fun newestFirst(list: List<Episode>): List<Episode> =
-        list.distinctBy { it.id }.sortedByDescending { it.publishedAt }.take(MAX_EPISODES)
+    private val MEDIA_FILE = Regex("\\.(mp3|m4a|aac|ogg|oga|opus|mp4|m4v|mov)$", RegexOption.IGNORE_CASE)
 
-    private fun longest(vararg options: String?): String = options.filterNotNull().maxByOrNull { it.length }.orEmpty()
+    private fun longest(options: List<String>): String = options.maxByOrNull { it.length }.orEmpty()
 
     private fun guessType(url: String): String {
         val path = url.substringBefore('?').lowercase()

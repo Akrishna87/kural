@@ -108,6 +108,20 @@ cat > "$FEED_DIR/feed.xml" <<XML
   </channel>
 </rss>
 XML
+# A huge show (1,500 episodes, ~30 MB of show notes), like the long-running shows people follow.
+python3 - "$FEED_DIR/big.xml" <<'PY'
+import sys, email.utils
+with open(sys.argv[1], "w") as f:
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Kural Huge Show</title>')
+    for n in range(1, 1501):
+        date = email.utils.formatdate(1_500_000_000 + n * 86400, usegmt=True)
+        notes = "Notes &amp; links for the episode. " * 600
+        f.write(f'<item><title>Huge Episode {n}</title><guid>h-{n}</guid><pubDate>{date}</pubDate>'
+                f'<enclosure url="http://10.0.2.2:8000/ep2.mp3" length="720000" type="audio/mpeg"/>'
+                f'<content:encoded><![CDATA[<p>{notes}</p>]]></content:encoded></item>\n')
+    f.write('</channel></rss>')
+PY
+echo "huge test feed: $(du -h "$FEED_DIR/big.xml" | cut -f1)"
 (cd "$FEED_DIR" && python3 -m http.server 8000 > "$OUT/http.log" 2>&1) &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
@@ -247,6 +261,50 @@ wait_for upnext 'text="Episode Two Plain"' 10 "Up Next doesn't list the queued e
 grep -q 'text="NOW PLAYING"' "$OUT/upnext.xml" || fail "Up Next doesn't show what's playing"
 shot 11-up-next
 echo "PASS: Up Next"
+
+echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
+tap upnext "Discover" last
+sleep 2
+dump discover3
+for _ in 1 2 3 4; do grep -q 'text="Add by feed address"' "$OUT/discover3.xml" && break; scroll_down; dump discover3; done
+tap discover3 "Add by feed address"
+sleep 1
+dump add3
+tap add3 "https://example.com/feed.xml"
+adb shell input text "http://10.0.2.2:8000/big.xml"
+sleep 1
+hide_keyboard
+dump add4
+tap add4 "Open"
+wait_for huge 'text="Kural Huge Show"' 90 "the huge show's page didn't open"
+wait_for huge 'text="Huge Episode 1500"' 30 "the huge show's newest episode isn't listed"
+tap huge "Follow"
+wait_for huge-following 'text="Following"' 90 "following the huge show didn't work"
+shot 12-huge-show
+echo "PASS: huge feeds load and can be followed"
+
+echo "--- Following a real long-running show from search"
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+dump discover4
+tap discover4 "Shows, episodes, people or topics"
+sleep 1
+adb shell input text "how%sto%sbe%sawesome%sat%syour%sjob"
+adb shell input keyevent KEYCODE_ENTER
+sleep 3
+hide_keyboard
+wait_for awesome 'content-desc="Follow How to Be Awesome at Your Job"' 60 "search didn't find How to Be Awesome at Your Job"
+tap awesome "Follow How to Be Awesome at Your Job"
+end=$((SECONDS + 150))
+while [ $SECONDS -lt $end ]; do
+  dump awesome-following
+  grep -q 'content-desc="Following How to Be Awesome at Your Job"' "$OUT/awesome-following.xml" && break
+  sleep 5
+done
+shot 13-awesome
+grep -q 'content-desc="Following How to Be Awesome at Your Job"' "$OUT/awesome-following.xml" \
+  || fail "following How to Be Awesome at Your Job (a real 1,200-episode show) didn't work"
+echo "PASS: followed How to Be Awesome at Your Job"
 
 if adb logcat -d | grep -q "FATAL EXCEPTION"; then
   adb logcat -d > "$OUT/logcat.txt"

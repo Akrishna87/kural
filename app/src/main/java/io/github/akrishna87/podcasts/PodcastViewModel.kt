@@ -117,8 +117,9 @@ fun friendlyError(e: Throwable): String = when {
     e is java.net.UnknownHostException -> "No internet connection"
     e is java.net.SocketTimeoutException -> "The server is taking too long to answer"
     e is java.io.IOException && e.message?.startsWith("HTTP 404") == true -> "That address wasn't found"
-    e is java.io.IOException && e.message?.contains("podcast feed") == true -> e.message!!
-    e is java.io.IOException && e.message?.contains("public feed") == true -> e.message!!
+    e is java.io.IOException && e.message?.startsWith("HTTP ") == true -> "The show's server said no (${e.message})"
+    // Our own explanations ("This doesn't look like a podcast feed", "This show has no public feed" …).
+    e is java.io.IOException && e.message?.contains("feed") == true -> e.message!!
     else -> "Couldn't load it. Check your connection and try again."
 }
 
