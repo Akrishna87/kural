@@ -64,7 +64,7 @@ background refresh, Coil for artwork and AndroidX Palette for artwork colours.
   stats, and serves Android Auto (`CarLibrary.kt`).
 - `Refresh.kt` checks feeds (politely, with ETag/Last-Modified), handles new episodes as each
   show's settings say, checks guest and topic alerts, and posts notifications.
-- `ci/icon/gen.py` draws the launcher icon (a microphone sending out sound waves).
+- `ci/icon/gen.py` draws the launcher icon: a smiling lime microphone sticker (thick outlines, a hard shadow, sparkles) on an electric blue to hot pink gradient, plus its one-colour themed version.
 - `ci/smoke-test.sh` runs on an Android emulator for every build. It checks Apple's real top
   chart and search, then follows a test show served from the CI machine (with chapters, a
   transcript and a guest). It plays an episode, opens its chapters and transcript, changes
