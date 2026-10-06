@@ -7,7 +7,7 @@ features people like most in Pocket Casts, Overcast, Apple Podcasts, Castro and 
 ## Installing it
 
 1. On your Android phone, open the
-   [latest build](https://github.com/Akrishna87/Akrishna87/releases/tag/podcasts-latest)
+   [latest build](https://github.com/Akrishna87/kural/releases/tag/podcasts-latest)
    and tap **Kural.apk** to download it.
 2. Open the downloaded file. Android will ask you to allow installing apps from your browser
    (or Files app). Allow it, then tap **Install**. Google Play Protect may warn that it doesn't
@@ -75,5 +75,5 @@ The unit tests in `app/src/test` cover feed parsing (dates, durations, chapters,
 show notes, OPML), the directory's answers, and the library (Up Next, filters, saving, autoplay
 order).
 
-Builds are made by the [Kural APK workflow](../.github/workflows/podcasts-apk.yml) on every
-push that touches `podcasts-android/`.
+Builds are made by the [Kural APK workflow](.github/workflows/podcasts-apk.yml) on every
+push to this repo.
