@@ -2,6 +2,7 @@ package io.github.akrishna87.podcasts
 
 import android.content.Context
 import android.content.SharedPreferences
+import io.github.akrishna87.podcasts.data.Boost
 import io.github.akrishna87.podcasts.data.Library
 import io.github.akrishna87.podcasts.data.PodcastSettings
 
@@ -11,7 +12,10 @@ object Settings {
 
     const val SPEED = "speed"
     const val TRIM_SILENCE = "trim_silence"
-    const val BOOST = "boost"
+    /** Volume boost level, 0..3 (see [Boost]). */
+    const val BOOST_LEVEL = "boost_level"
+    /** The old on/off boost, read only to carry it over. */
+    private const val OLD_BOOST = "boost"
     const val SKIP_BACK = "skip_back"
     const val SKIP_FORWARD = "skip_forward"
     /** Headphone, car and notification next/previous buttons skip time instead of changing episode. */
@@ -29,7 +33,13 @@ object Settings {
 
     fun speed(p: SharedPreferences) = p.getFloat(SPEED, 1f)
     fun trimSilence(p: SharedPreferences) = p.getBoolean(TRIM_SILENCE, false)
-    fun boost(p: SharedPreferences) = p.getBoolean(BOOST, false)
+    fun boostLevel(p: SharedPreferences): Int = Boost.clamp(
+        when {
+            p.contains(BOOST_LEVEL) -> p.getInt(BOOST_LEVEL, Boost.DEFAULT)
+            p.getBoolean(OLD_BOOST, false) -> Boost.HIGH
+            else -> Boost.DEFAULT
+        },
+    )
     fun skipBackSec(p: SharedPreferences) = p.getInt(SKIP_BACK, 10)
     fun skipForwardSec(p: SharedPreferences) = p.getInt(SKIP_FORWARD, 30)
     fun buttonsSkip(p: SharedPreferences) = p.getBoolean(BUTTONS_SKIP, true)
@@ -39,11 +49,11 @@ object Settings {
     fun refreshHours(p: SharedPreferences) = p.getInt(REFRESH_HOURS, 6)
 
     /** Speed, trim silence and boost for a show: its own if it has custom effects, else the app's. */
-    data class Effects(val speed: Float, val trimSilence: Boolean, val boost: Boolean)
+    data class Effects(val speed: Float, val trimSilence: Boolean, val boostLevel: Int)
 
     fun effectsFor(p: SharedPreferences, show: PodcastSettings?): Effects =
-        if (show != null && show.customEffects) Effects(show.speed, show.trimSilence, show.boost)
-        else Effects(speed(p), trimSilence(p), boost(p))
+        if (show != null && show.customEffects) Effects(show.speed, show.trimSilence, show.boostLevel)
+        else Effects(speed(p), trimSilence(p), boostLevel(p))
 }
 
 fun Context.library(): Library = Library.get(filesDir)

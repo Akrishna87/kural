@@ -1047,9 +1047,9 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         if (show?.settings?.customEffects == true) lib.updateSettings(show.id) { it.copy(trimSilence = on) } else setting(Settings.TRIM_SILENCE, on)
     }
 
-    fun setBoost(on: Boolean) {
+    fun setBoost(level: Int) {
         val show = current?.podcastId?.let { lib.entry(it) }
-        if (show?.settings?.customEffects == true) lib.updateSettings(show.id) { it.copy(boost = on) } else setting(Settings.BOOST, on)
+        if (show?.settings?.customEffects == true) lib.updateSettings(show.id) { it.copy(boostLevel = level) } else setting(Settings.BOOST_LEVEL, level)
     }
 
     /** Turns this show's own effects on (starting from the current ones) or off. */
@@ -1057,7 +1057,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         val id = current?.podcastId ?: return
         val fx = effects()
         lib.updateSettings(id) {
-            if (on) it.copy(customEffects = true, speed = fx.speed, trimSilence = fx.trimSilence, boost = fx.boost) else it.copy(customEffects = false)
+            if (on) it.copy(customEffects = true, speed = fx.speed, trimSilence = fx.trimSilence, boostLevel = fx.boostLevel) else it.copy(customEffects = false)
         }
     }
 

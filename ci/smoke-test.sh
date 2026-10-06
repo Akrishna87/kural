@@ -193,6 +193,13 @@ tap episode "Play"
 for _ in $(seq 1 20); do playing && break; sleep 2; done
 playing || fail "the episode didn't start playing"
 echo "PASS: the episode plays"
+sleep 2
+adb shell dumpsys media.audio_flinger > "$OUT/audioflinger.txt" 2>/dev/null || true
+if grep -qi "loudness" "$OUT/audioflinger.txt"; then
+  echo "PASS: the volume boost is attached ($(grep -i -m1 'loudness' "$OUT/audioflinger.txt" | tr -s ' ' | cut -c1-80))"
+else
+  echo "WARNING: no loudness enhancer found in the audio system"
+fi
 
 echo "--- Full player: chapters, transcript, speed"
 sleep 2

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import io.github.akrishna87.podcasts.PodcastViewModel
+import io.github.akrishna87.podcasts.data.Boost
 import io.github.akrishna87.podcasts.data.Episode
 import io.github.akrishna87.podcasts.data.EpisodeState
 import io.github.akrishna87.podcasts.feed.NoteLink
@@ -456,6 +457,29 @@ fun Modifier.verticalScrollable(): Modifier = this.then(Modifier.verticalScroll(
 fun artTint(vm: PodcastViewModel, url: String?, title: String): Color {
     LaunchedEffect(url) { vm.loadArtColor(url) }
     return vm.artColor(url) ?: placeholderColor(title)
+}
+
+/** Volume boost: Off, Low, Medium or High. */
+@Composable
+fun BoostPicker(level: Int, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text("Volume boost")
+        Text("Makes quiet shows louder without distorting the loud parts", color = Palette.SubText, fontSize = 13.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Boost.LEVELS.forEachIndexed { i, name ->
+                FilterChip(
+                    selected = i == level,
+                    onClick = { onPick(i) },
+                    label = { Text(name) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                )
+            }
+        }
+    }
 }
 
 /** "1.0×", "1.25×". */

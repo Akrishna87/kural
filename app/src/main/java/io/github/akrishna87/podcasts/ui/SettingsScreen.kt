@@ -51,7 +51,7 @@ fun SettingsScreen(vm: PodcastViewModel) {
             item {
                 SettingRow("Speed", speedLabel(Settings.speed(p)), "For shows without their own") { pick = "speed" }
                 Toggle("Trim silence", Settings.trimSilence(p), "Shortens pauses without changing voices") { vm.setting(Settings.TRIM_SILENCE, it) }
-                Toggle("Volume boost", Settings.boost(p), "Lifts quiet voices") { vm.setting(Settings.BOOST, it) }
+                BoostPicker(Settings.boostLevel(p), { vm.setting(Settings.BOOST_LEVEL, it) })
                 SettingRow("Skip back", "${Settings.skipBackSec(p)} s") { pick = "back" }
                 SettingRow("Skip forward", "${Settings.skipForwardSec(p)} s") { pick = "forward" }
                 Toggle(
