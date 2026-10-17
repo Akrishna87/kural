@@ -28,7 +28,7 @@ Reddit, and from what users praise in the leading apps.
 | "Take me straight to my subscriptions, not ads for other shows" | **Home** opens on your own shows: Continue listening, **Your shows**, Up Next, **New episodes**, **Latest from your shows** and mentions you follow. **Suggestions** come last, picked from the top charts of the categories you listen to (a "Careers" show counts for Business), leaving out what you already follow. |
 | A queue you control (Pocket Casts' Up Next) | **Up Next**: play next / play last, drag ≡ to reorder, swipe to remove, total time left (adjusted for speed). Finished episodes leave by themselves. |
 | Inbox triage (Castro) | **New episodes** on Home, each with *Play next*, *Play last* or *Dismiss*. Nothing auto-plays unless you ask. |
-| Smart Speed and Voice Boost (Overcast), Trim Silence (Pocket Casts) | **Trim silence** and **Volume boost**, app-wide or per show. Speed goes from 0.5× to 3× in 0.05 steps. |
+| Smart Speed and Voice Boost (Overcast), Trim Silence (Pocket Casts) | **Trim silence** and **Volume boost** (Off / Low / Medium / High, Medium by default, since many podcasts are mastered quietly), app-wide or per show. The boost lifts the level and limits peaks, so loud parts don't distort. Speed goes from 0.5× to 3× in 0.05 steps. |
 | Per-podcast speed and "skip first X seconds" | **Show settings**: custom speed and effects, **skip intro** and **skip outro**, oldest-first order, auto-download, auto-add to Up Next, notifications. |
 | Chronological play for serials | **Oldest first** per show. Serial shows default to it, offer **Play episode 1**, and autoplay continues in order. |
 | Chapters | Feed chapters (Podlove), Podcasting 2.0 JSON chapters, and **ID3 chapters inside the MP3**. Chapter list, next/previous chapter buttons and chapter artwork. |
@@ -64,7 +64,7 @@ background refresh, Coil for artwork and AndroidX Palette for artwork colours.
   stats, and serves Android Auto (`CarLibrary.kt`).
 - `Refresh.kt` checks feeds (politely, with ETag/Last-Modified), handles new episodes as each
   show's settings say, checks guest and topic alerts, and posts notifications.
-- `ci/icon/gen.py` draws the launcher icon (a microphone sending out sound waves).
+- `ci/icon/gen.py` draws the launcher icon: a smiling lime microphone sticker (thick outlines, a hard shadow, sparkles) on an electric blue to hot pink gradient, plus its one-colour themed version.
 - `ci/smoke-test.sh` runs on an Android emulator for every build. It checks Apple's real top
   chart and search, then follows a test show served from the CI machine (with chapters, a
   transcript and a guest). It plays an episode, opens its chapters and transcript, changes

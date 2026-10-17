@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import io.github.akrishna87.podcasts.data.Boost
 import io.github.akrishna87.podcasts.data.Chapter
 import io.github.akrishna87.podcasts.data.Episode
 import io.github.akrishna87.podcasts.data.Library
@@ -61,8 +62,6 @@ class PlaybackService : MediaLibraryService() {
 
     companion object {
         private const val FADE_MS = 10_000L
-        /** Volume boost, in millibels: about what Overcast's Voice Boost adds to quiet shows. */
-        private const val BOOST_MB = 900
         /** The notification's skip buttons, as commands the system media controls can show. */
         private const val CMD_BACK = "io.github.akrishna87.podcasts.SKIP_BACK"
         private const val CMD_FORWARD = "io.github.akrishna87.podcasts.SKIP_FORWARD"
@@ -333,8 +332,9 @@ class PlaybackService : MediaLibraryService() {
         if (exo.skipSilenceEnabled != fx.trimSilence) exo.skipSilenceEnabled = fx.trimSilence
         loudness?.let {
             try {
-                it.setTargetGain(if (fx.boost) BOOST_MB else 0)
-                it.enabled = fx.boost
+                val gain = Boost.gainMb(fx.boostLevel)
+                it.setTargetGain(gain)
+                it.enabled = gain > 0
             } catch (e: Exception) {
                 // the effect was taken over by another app
             }

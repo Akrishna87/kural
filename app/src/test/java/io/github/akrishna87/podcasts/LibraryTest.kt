@@ -1,6 +1,8 @@
 package io.github.akrishna87.podcasts
 
 import io.github.akrishna87.podcasts.data.AutoAdd
+import io.github.akrishna87.podcasts.data.Boost
+import io.github.akrishna87.podcasts.data.PodcastSettings
 import io.github.akrishna87.podcasts.data.Episode
 import io.github.akrishna87.podcasts.data.EpisodeFilter
 import io.github.akrishna87.podcasts.data.Library
@@ -176,6 +178,20 @@ class LibraryTest {
 
         assertEquals(1528390055L, Directory.appleIdIn("https://podcasts.apple.com/us/podcast/hard-fork/id1528390055?i=1000"))
         assertNull(Directory.appleIdIn("https://example.com/feed"))
+    }
+
+    @Test
+    fun volumeBoostIsOnByDefaultAndOldSettingsCarryOver() {
+        assertEquals(Boost.DEFAULT, PodcastSettings().boostLevel)
+        assertTrue(Boost.gainMb(Boost.DEFAULT) > 0)
+        // Saved by an earlier build, with the on/off boost.
+        assertEquals(Boost.HIGH, PodcastSettings.fromJson(org.json.JSONObject().put("customEffects", true).put("boost", true)).boostLevel)
+        assertEquals(Boost.DEFAULT, PodcastSettings.fromJson(org.json.JSONObject().put("boost", false)).boostLevel)
+        // New saves round-trip, and odd values are kept in range.
+        assertEquals(1, PodcastSettings.fromJson(PodcastSettings(boostLevel = 1).toJson()).boostLevel)
+        assertEquals(0, PodcastSettings.fromJson(PodcastSettings(boostLevel = 0).toJson()).boostLevel)
+        assertEquals(Boost.HIGH, PodcastSettings.fromJson(org.json.JSONObject().put("boostLevel", 9)).boostLevel)
+        assertEquals(listOf(0, 400, 750, 1100), Boost.LEVELS.indices.map(Boost::gainMb))
     }
 
     @Test

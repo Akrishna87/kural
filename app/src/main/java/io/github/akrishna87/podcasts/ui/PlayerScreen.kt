@@ -213,7 +213,7 @@ fun PlayerScreen(vm: PodcastViewModel) {
                     "Sleep timer",
                     active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
                 ) { dialog = "sleep" }
-                PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boost) { dialog = "effects" }
+                PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
                 PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
                 PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
                     vm.selectSection(Section.UP_NEXT)
@@ -483,7 +483,7 @@ private fun EffectsDialog(vm: PodcastViewModel, show: String, onDismiss: () -> U
         text = {
             Column {
                 Toggle("Trim silence", fx.trimSilence, "Shortens pauses, so episodes finish sooner") { vm.setTrimSilence(it) }
-                Toggle("Volume boost", fx.boost, "Lifts quiet voices; handy in the car or on the train") { vm.setBoost(it) }
+                BoostPicker(fx.boostLevel, vm::setBoost)
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Toggle("Only for “$show”", custom, "Keep this show's speed and sound separate from the rest") { vm.setCustomEffects(it) }
             }

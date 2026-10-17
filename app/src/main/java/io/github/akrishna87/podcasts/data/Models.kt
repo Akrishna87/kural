@@ -186,6 +186,23 @@ fun shortHash(s: String): String {
     return digest.take(8).joinToString("") { "%02x".format(it) }
 }
 
+/**
+ * Volume boost levels. Many podcasts are mastered quietly, so a moderate boost is on by
+ * default. The phone's loudness enhancer raises the level and limits the peaks, so loud
+ * parts don't distort.
+ */
+object Boost {
+    val LEVELS = listOf("Off", "Low", "Medium", "High")
+    /** Gain for each level, in millibels (100 mB = 1 dB). */
+    val GAIN_MB = listOf(0, 400, 750, 1100)
+    const val HIGH = 3
+    const val DEFAULT = 2
+
+    fun clamp(level: Int) = level.coerceIn(0, LEVELS.lastIndex)
+
+    fun gainMb(level: Int) = GAIN_MB[clamp(level)]
+}
+
 /** What to do with a show's new episodes. */
 enum class AutoAdd(val label: String) { OFF("Don't add"), TOP("Play next"), BOTTOM("Play last") }
 
@@ -203,7 +220,8 @@ data class PodcastSettings(
     val customEffects: Boolean = false,
     val speed: Float = 1f,
     val trimSilence: Boolean = false,
-    val boost: Boolean = false,
+    /** How much louder than the file: an index into [Boost.LEVELS]. */
+    val boostLevel: Int = Boost.DEFAULT,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("newestFirst", newestFirst)
@@ -215,7 +233,7 @@ data class PodcastSettings(
         .put("customEffects", customEffects)
         .put("speed", speed.toDouble())
         .put("trimSilence", trimSilence)
-        .put("boost", boost)
+        .put("boostLevel", boostLevel)
 
     companion object {
         fun fromJson(o: JSONObject?): PodcastSettings {
@@ -230,7 +248,13 @@ data class PodcastSettings(
                 customEffects = o.optBoolean("customEffects"),
                 speed = o.optDouble("speed", 1.0).toFloat(),
                 trimSilence = o.optBoolean("trimSilence"),
-                boost = o.optBoolean("boost"),
+                boostLevel = Boost.clamp(
+                    when {
+                        o.has("boostLevel") -> o.optInt("boostLevel")
+                        o.optBoolean("boost") -> Boost.HIGH // the old on/off boost was about as strong as High
+                        else -> Boost.DEFAULT
+                    },
+                ),
             )
         }
     }

@@ -270,7 +270,7 @@ fun ShowSettingsScreen(vm: PodcastViewModel, podcastId: String) {
                 if (s.customEffects) {
                     SettingRow("Speed", speedLabel(s.speed)) { pick = "speed" }
                     Toggle("Trim silence", s.trimSilence, "Shortens pauses without changing voices") { on -> update { it.copy(trimSilence = on) } }
-                    Toggle("Volume boost", s.boost, "Lifts quiet voices; good for noisy places") { on -> update { it.copy(boost = on) } }
+                    BoostPicker(s.boostLevel, { level -> update { it.copy(boostLevel = level) } })
                 }
             }
         }
