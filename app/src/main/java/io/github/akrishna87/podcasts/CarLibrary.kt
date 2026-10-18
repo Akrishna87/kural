@@ -24,7 +24,7 @@ class CarLibrary(private val context: Context) {
 
     private val lib get() = context.library()
 
-    val root: MediaItem get() = folder(ROOT, "Kural", MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+    val root: MediaItem get() = folder(ROOT, "Yap", MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
 
     /** The items inside [parentId], or null if there's no such folder. */
     fun children(parentId: String): List<MediaItem>? = when {
@@ -56,7 +56,7 @@ class CarLibrary(private val context: Context) {
         return lib.episode(id)?.let(::playable)
     }
 
-    /** "Play <show> on Kural": that show's newest unplayed episode, or an episode whose title matches. */
+    /** "Play <show> on Yap": that show's newest unplayed episode, or an episode whose title matches. */
     fun search(query: String): Episode? {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return lib.current() ?: lib.queueEpisodes().firstOrNull() ?: lib.newEpisodes().firstOrNull()?.first

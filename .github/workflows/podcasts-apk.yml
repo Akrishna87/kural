@@ -1,4 +1,4 @@
-name: Kural podcasts APK
+name: Yap podcasts APK
 
 on:
   push:
@@ -29,11 +29,11 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew --no-daemon --stacktrace testReleaseUnitTest assembleRelease
       - name: Name the APK
-        run: cp app/build/outputs/apk/release/app-release.apk Kural.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Yap.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: Kural-apk
-          path: Kural.apk
+          name: Yap-apk
+          path: Yap.apk
 
   smoke-test:
     needs: build
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: Kural-apk
+          name: Yap-apk
           path: apk
       - name: Install ffmpeg (for the test show's audio)
         run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
@@ -61,7 +61,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none
-          script: bash ci/smoke-test.sh apk/Kural.apk smoke-out
+          script: bash ci/smoke-test.sh apk/Yap.apk smoke-out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -80,7 +80,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: Kural-apk
+          name: Yap-apk
           path: out
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -92,8 +92,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete podcasts-latest --cleanup-tag --yes || true
-          gh release create podcasts-latest out/Kural.apk out/screens/*.png \
+          gh release create podcasts-latest out/Yap.apk out/screens/*.png \
             --target "$GITHUB_SHA" \
             --prerelease \
-            --title "Kural podcasts for Android (build ${{ github.run_number }})" \
-            --notes "Download **Kural.apk** on your Android phone, open it, and allow installing from your browser when asked. Each new build installs as an update over the last one. The PNG files are screenshots from the automatic emulator test of this build."
+            --title "Yap podcasts for Android (build ${{ github.run_number }})" \
+            --notes "Download **Yap.apk** on your Android phone, open it, and allow installing from your browser when asked. Each new build installs as an update over the last one. The PNG files are screenshots from the automatic emulator test of this build."

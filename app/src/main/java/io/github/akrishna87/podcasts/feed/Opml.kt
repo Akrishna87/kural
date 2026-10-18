@@ -23,7 +23,7 @@ object Opml {
         val sb = StringBuilder()
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         sb.append("<opml version=\"2.0\">\n")
-        sb.append("  <head>\n    <title>Kural subscriptions</title>\n    <dateCreated>").append(date).append("</dateCreated>\n  </head>\n")
+        sb.append("  <head>\n    <title>Yap subscriptions</title>\n    <dateCreated>").append(date).append("</dateCreated>\n  </head>\n")
         sb.append("  <body>\n")
         for (p in podcasts) {
             sb.append("    <outline type=\"rss\" text=\"").append(escape(p.title)).append("\" title=\"").append(escape(p.title))

@@ -1,27 +1,21 @@
 """Usage: python3 ci/icon/gen.py app/src/main/res <preview dir>
 
 Generate the launcher icon as Android vector drawables, plus SVG previews built from the same
-shapes. The art is a sticker: a smiling lime microphone with blushing cheeks, thick ink
-outlines and a hard drop shadow, tilted a little, with sparkles, on an electric blue to hot
-pink gradient. Kural means "voice", so the mic is the app's mascot."""
+shapes. The art is a sticker: a lime speech bubble with the word "yap" in it, thick ink
+outlines and a hard drop shadow, tilted a little, with sparkles, on a hot pink to orange
+gradient. Yap is the app's name: a podcast is people having a good yap."""
 import os, sys
 
 OUT_RES = sys.argv[1]          # app/src/main/res
 OUT_PREVIEW = sys.argv[2]      # preview dir
 
-BG_TOP, BG_BOTTOM = "#2D6BFF", "#FF3DA5"   # electric blue to hot pink
-INK = "#14101F"                            # outlines, face and stand
-LIME = "#C6FF3D"                           # the mic
-BLUSH = "#FF7AB6"
+BG_TOP, BG_BOTTOM = "#FF3D8B", "#FF8A3D"   # hot pink to orange
+INK = "#14101F"                            # outlines and letters
+LIME = "#C6FF3D"                           # the bubble
 SPARKLE = "#FFFFFF"
-TILT = -8                                  # degrees: a playful lean
+TILT = -6                                  # degrees: a playful lean
 SHADOW = 7                                 # hard shadow offset, down and right
-SCALE = 0.9                                # stays inside the adaptive icon's safe circle
-
-
-def rrect(x, y, w, h, r):
-    return (f"M{x+r},{y} h{w-2*r} a{r},{r} 0 0 1 {r},{r} v{h-2*r} a{r},{r} 0 0 1 {-r},{r} "
-            f"h{-(w-2*r)} a{r},{r} 0 0 1 {-r},{-r} v{-(h-2*r)} a{r},{r} 0 0 1 {r},{-r} z")
+SCALE = 0.66                               # launchers show the middle 72 of 108dp; the bubble has to fit that circle
 
 
 def sparkle(cx, cy, r):
@@ -30,28 +24,32 @@ def sparkle(cx, cy, r):
             f"C{cx-k},{cy+k} {cx-k},{cy+k} {cx-r},{cy} C{cx-k},{cy-k} {cx-k},{cy-k} {cx},{cy-r} Z")
 
 
-def oval(cx, cy, rx, ry):
-    return f"M{cx-rx},{cy} a{rx},{ry} 0 1 0 {2*rx},0 a{rx},{ry} 0 1 0 {-2*rx},0 z"
+def circle(cx, cy, r):
+    return f"M{cx-r},{cy} a{r},{r} 0 1 0 {2*r},0 a{r},{r} 0 1 0 {-2*r},0 z"
 
 
 # Shapes: (kind, path, colour, stroke width, shadow?, role). Drawn on a 192 grid.
-# role: "art" (tilted mic), "sparkle" (not tilted), "detail" (left out of the themed icon's fill).
-CAPSULE = rrect(72, 34, 48, 82, 24)
-STAND = ["M58,98 C58,142 134,142 134,98", "M96,132 L96,152", "M76,154 L116,154"]
-shapes = []
-for d in STAND:
-    shapes.append(("stroke", d, INK, 9, False, "art"))  # no shadow: it would read as a second stand
-shapes.append(("fill", CAPSULE, INK, 0, True, "shadow-only"))
-shapes.append(("fill", CAPSULE, LIME, 0, False, "art"))
-shapes.append(("stroke", CAPSULE, INK, 6, False, "art"))
-shapes.append(("fill", rrect(83, 64, 7, 13, 3.5), INK, 0, False, "face"))      # eyes
-shapes.append(("fill", rrect(102, 64, 7, 13, 3.5), INK, 0, False, "face"))
-shapes.append(("stroke", "M83,87 C88,99 104,99 109,87", INK, 5, False, "face"))  # smile
-shapes.append(("fill", oval(78, 86, 5, 4), BLUSH, 0, False, "detail"))           # cheeks
-shapes.append(("fill", oval(114, 86, 5, 4), BLUSH, 0, False, "detail"))
-shapes.append(("fill", sparkle(148, 44, 14), SPARKLE, 0, False, "sparkle"))
-shapes.append(("fill", sparkle(42, 52, 8), SPARKLE, 0, False, "sparkle"))
-shapes.append(("fill", sparkle(152, 142, 6), SPARKLE, 0, False, "sparkle"))
+# role: "art" (tilted), "letter" (tilted; the word), "sparkle" (not tilted).
+BUBBLE = ("M60,42 H132 A30,30 0 0 1 162,72 V108 A30,30 0 0 1 132,138 H86 L54,160 L60,138 "
+          "A30,30 0 0 1 30,108 V72 A30,30 0 0 1 60,42 Z")
+LETTER_W = 11
+LETTERS = [
+    ("stroke", "M56,74 L66,96 M76,74 L62,110"),     # y
+    ("stroke", circle(97, 86, 12)),                  # a
+    ("stroke", "M109,74 L109,98"),
+    ("stroke", "M128,74 L128,116"),                  # p
+    ("stroke", circle(140, 86, 12)),
+]
+shapes = [
+    ("fill", BUBBLE, INK, 0, True, "shadow-only"),
+    ("fill", BUBBLE, LIME, 0, False, "art"),
+    ("stroke", BUBBLE, INK, 6, False, "art"),
+]
+shapes += [(k, d, INK, LETTER_W, False, "letter") for k, d in LETTERS]
+shapes += [
+    ("fill", sparkle(158, 44, 12), SPARKLE, 0, False, "sparkle"),
+    ("fill", sparkle(36, 146, 7), SPARKLE, 0, False, "sparkle"),
+]
 
 
 # ----- Android vector drawables -----
@@ -88,7 +86,7 @@ def foreground():
     lines.append("        </group>")
     lines.append(tilt_open)
     for kind, d, color, width, shadow, role in shapes:
-        if role in ("art", "face", "detail"):
+        if role in ("art", "letter"):
             lines.append("            " + vpath(kind, d, color, width))
     lines.append("        </group>")
     for kind, d, color, width, shadow, role in shapes:
@@ -99,20 +97,18 @@ def foreground():
 
 
 write("ic_launcher_foreground.xml",
-      HEADER.format(comment="<!-- Launcher art: a smiling microphone sticker. Generated by ci/icon/gen.py. -->", extra="")
+      HEADER.format(comment="<!-- Launcher art: a \"yap\" speech-bubble sticker. Generated by ci/icon/gen.py. -->", extra="")
       + foreground() + "\n</vector>\n")
 
-# Themed (monochrome) icon: one colour, so the mic is drawn as an outline with its face inside.
+# Themed (monochrome) icon: one colour, so the bubble is drawn as an outline with the word inside.
 mono_lines = [f'    <group android:pivotX="96" android:pivotY="96" android:scaleX="{SCALE}" android:scaleY="{SCALE}">',
-              f'        <group android:pivotX="96" android:pivotY="96" android:rotation="{TILT}">']
-for d in STAND:
-    mono_lines.append("            " + vpath("stroke", d, "#FFFFFF", 9))
-mono_lines.append("            " + vpath("stroke", CAPSULE, "#FFFFFF", 8))
+              f'        <group android:pivotX="96" android:pivotY="96" android:rotation="{TILT}">',
+              "            " + vpath("stroke", BUBBLE, "#FFFFFF", 8)]
 for kind, d, color, width, shadow, role in shapes:
-    if role == "face":
+    if role == "letter":
         mono_lines.append("            " + vpath(kind, d, "#FFFFFF", width))
 mono_lines.append("        </group>")
-mono_lines.append("        " + vpath("fill", sparkle(148, 44, 14), "#FFFFFF", 0))
+mono_lines.append("        " + vpath("fill", sparkle(158, 44, 12), "#FFFFFF", 0))
 mono_lines.append("    </group>")
 write("ic_launcher_monochrome.xml",
       HEADER.format(comment="<!-- Themed-icon version of the launcher art. Generated by ci/icon/gen.py. -->", extra="")
@@ -129,6 +125,18 @@ write("ic_launcher_background.xml",
 </vector>
 ''')
 
+# Status-bar icon: the bubble, solid, with three yap dots cut out (the word is too small to read at 24dp).
+NOTE_BUBBLE = "M7,3.5H17A4.5,4.5 0 0 1 21.5,8V13A4.5,4.5 0 0 1 17,17.5H10.5L5.5,21L6.5,17.3A4.5,4.5 0 0 1 2.5,13V8A4.5,4.5 0 0 1 7,3.5Z"
+dots = "".join(f"M{x - 1.5},10.5a1.5,1.5 0 1 0 3,0a1.5,1.5 0 1 0 -3,0z" for x in (8, 12, 16))
+with open(os.path.join(OUT_RES, "drawable", "ic_notification.xml"), "w") as f:
+    f.write('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!-- Status-bar icon: the launcher\'s speech bubble, in one colour. Generated by ci/icon/gen.py. -->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            '    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">\n'
+            f'    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="{NOTE_BUBBLE}{dots}" />\n'
+            '</vector>\n')
+print("wrote ic_notification.xml")
+
 
 # ----- Previews: the icon in a squircle and a circle, and as a themed icon -----
 
@@ -140,24 +148,24 @@ def spath(kind, d, color, width):
 
 def art_svg():
     shadow = "".join(spath(k, d, INK, w) for k, d, c, w, s, r in shapes if s)
-    art = "".join(spath(k, d, c, w) for k, d, c, w, s, r in shapes if r in ("art", "face", "detail"))
+    art = "".join(spath(k, d, c, w) for k, d, c, w, s, r in shapes if r in ("art", "letter"))
     sparkles = "".join(spath(k, d, c, w) for k, d, c, w, s, r in shapes if r == "sparkle")
     return (f'<g transform="translate({SHADOW} {SHADOW}) rotate({TILT} 96 96)">{shadow}</g>'
             f'<g transform="rotate({TILT} 96 96)">{art}</g>{sparkles}')
 
 
 def mono_svg(color):
-    stand = "".join(spath("stroke", d, color, 9) for d in STAND)
-    face = "".join(spath(k, d, color, w) for k, d, c, w, s, r in shapes if r == "face")
-    return (f'<g transform="rotate({TILT} 96 96)">{stand}{spath("stroke", CAPSULE, color, 8)}{face}</g>'
-            + spath("fill", sparkle(148, 44, 14), color, 0))
+    word = "".join(spath(k, d, color, w) for k, d, c, w, s, r in shapes if r == "letter")
+    return (f'<g transform="rotate({TILT} 96 96)">{spath("stroke", BUBBLE, color, 8)}{word}</g>'
+            + spath("fill", sparkle(158, 44, 12), color, 0))
 
 
 def icon_svg(mask, themed=False):
-    clip = {"circle": '<circle cx="96" cy="96" r="96"/>', "squircle": '<rect width="192" height="192" rx="54"/>'}[mask]
-    bg = '<rect width="192" height="192" fill="#E8E0FF"/>' if themed else '<rect width="192" height="192" fill="url(#bg)"/>'
-    art = mono_svg("#2A1B5C") if themed else art_svg()
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">'
+    clip = {"circle": '<circle cx="96" cy="96" r="64"/>', "squircle": '<rect x="32" y="32" width="128" height="128" rx="36"/>'}[mask]
+    bg = '<rect width="192" height="192" fill="#FFE0EC"/>' if themed else '<rect width="192" height="192" fill="url(#bg)"/>'
+    art = mono_svg("#5C1B3A") if themed else art_svg()
+    # A launcher shows the middle two thirds of the 108dp layer (32..160 on this grid), then masks it.
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="32 32 128 128" width="192" height="192">'
             f'<defs><clipPath id="m">{clip}</clipPath>'
             f'<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{BG_TOP}"/>'
             f'<stop offset="1" stop-color="{BG_BOTTOM}"/></linearGradient></defs>'

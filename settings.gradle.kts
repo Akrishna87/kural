@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Kural"
+rootProject.name = "Yap"
 include(":app")

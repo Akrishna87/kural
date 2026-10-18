@@ -33,7 +33,7 @@ import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.Section
 
 @Composable
-fun KuralApp(vm: PodcastViewModel) {
+fun YapApp(vm: PodcastViewModel) {
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.showPlayer || vm.screens.isNotEmpty() || vm.section != Section.HOME) {

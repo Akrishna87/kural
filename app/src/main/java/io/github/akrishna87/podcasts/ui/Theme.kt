@@ -73,7 +73,7 @@ val BrandGradient = Brush.linearGradient(listOf(Color(0xFF6D4AE0), Palette.Coral
 fun Color.deep(amount: Float = 0.45f): Color = lerp(this, Color.Black, amount)
 
 @Composable
-fun KuralTheme(content: @Composable () -> Unit) {
+fun YapTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = DarkColors, typography = AppTypography) {
         // Text and icons default to black outside a Surface; on this dark app they should be white.
         CompositionLocalProvider(LocalContentColor provides Palette.Text, content = content)

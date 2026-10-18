@@ -78,13 +78,13 @@ fun SettingsScreen(vm: PodcastViewModel) {
             item { SettingsHeader("Your shows") }
             item {
                 SettingRow("Import from another app", "OPML", "Pocket Casts, Overcast, Apple Podcasts, AntennaPod and others can export one") { importer.launch(arrayOf("*/*")) }
-                SettingRow("Export your shows", "OPML", "To move to another app or keep a backup") { exporter.launch("kural-shows.opml") }
+                SettingRow("Export your shows", "OPML", "To move to another app or keep a backup") { exporter.launch("yap-shows.opml") }
                 SettingRow("Listening stats", "") { vm.open(Screen.StatsPage) }
             }
             item { SettingsHeader("About") }
             item {
                 Text(
-                    "Kural (குரல், “voice”) finds shows through Apple's public podcast directory and reads each show's own feed. " +
+                    "Yap finds shows through Apple's public podcast directory and reads each show's own feed. " +
                         "There's no account, no ads and no tracking: your shows, history and settings stay on this phone.",
                     color = Palette.SubText,
                     fontSize = 13.sp,
@@ -136,7 +136,7 @@ fun AlertsScreen(vm: PodcastViewModel) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
             item {
                 Text(
-                    "Follow a person or a topic and Kural checks every podcast in the directory for new episodes that mention them, " +
+                    "Follow a person or a topic and Yap checks every podcast in the directory for new episodes that mention them, " +
                         "and tells you when one comes out. Great for favourite guests.",
                     color = Palette.SubText,
                     fontSize = 14.sp,
@@ -186,7 +186,7 @@ fun AlertsScreen(vm: PodcastViewModel) {
                     }
                 }
             } else if (vm.snap.alerts.isNotEmpty()) {
-                item { Text("Nothing new yet. Kural looks each time it checks for new episodes.", color = Palette.SubText, modifier = Modifier.padding(16.dp)) }
+                item { Text("Nothing new yet. Yap looks each time it checks for new episodes.", color = Palette.SubText, modifier = Modifier.padding(16.dp)) }
             }
         }
     }

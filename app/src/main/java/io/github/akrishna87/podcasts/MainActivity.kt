@@ -8,8 +8,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import io.github.akrishna87.podcasts.ui.KuralApp
-import io.github.akrishna87.podcasts.ui.KuralTheme
+import io.github.akrishna87.podcasts.ui.YapApp
+import io.github.akrishna87.podcasts.ui.YapTheme
 
 class MainActivity : ComponentActivity() {
     private val vm: PodcastViewModel by viewModels()
@@ -23,8 +23,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) vm.handleIntent(intent)
         setContent {
-            KuralTheme {
-                KuralApp(vm)
+            YapTheme {
+                YapApp(vm)
             }
         }
     }

@@ -20,7 +20,7 @@ class Streamed<T>(val value: T?, val etag: String?, val lastModified: String?, v
 
 /** Plain HTTP(S) requests for feeds, the directory, chapters and transcripts. */
 object Http {
-    const val USER_AGENT = "Kural/1.0 (Android podcast app; +https://github.com/Akrishna87/Akrishna87)"
+    const val USER_AGENT = "Yap/1.0 (Android podcast app; +https://github.com/Akrishna87/kural)"
     /** Small things (directory answers, chapters, transcripts) are read whole, up to this size. */
     private const val MAX_BYTES = 25_000_000
     /** Feeds are streamed, so they can be much bigger; this only stops endless downloads. */
