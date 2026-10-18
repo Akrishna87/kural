@@ -66,7 +66,7 @@ cat > "$FEED_DIR/ep1.vtt" <<'VTT'
 WEBVTT
 
 00:00:00.000 --> 00:00:05.000
-<v Host>Welcome to the Kural test show.
+<v Host>Welcome to the Yap test show.
 
 00:00:05.000 --> 00:00:30.000
 <v Guest>Thanks for having me on the transcript.
@@ -78,7 +78,7 @@ cat > "$FEED_DIR/feed.xml" <<XML
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
      xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:psc="http://podlove.org/simple-chapters">
   <channel>
-    <title>Kural Test Show</title>
+    <title>Yap Test Show</title>
     <link>https://github.com/Akrishna87/Akrishna87</link>
     <description>A show made up for the automatic test.</description>
     <itunes:author>Test Host</itunes:author>
@@ -112,7 +112,7 @@ XML
 python3 - "$FEED_DIR/big.xml" <<'PY'
 import sys, email.utils
 with open(sys.argv[1], "w") as f:
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Kural Huge Show</title>')
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Yap Huge Show</title>')
     for n in range(1, 1501):
         date = email.utils.formatdate(1_500_000_000 + n * 86400, usegmt=True)
         notes = "Notes &amp; links for the episode. " * 600
@@ -138,7 +138,7 @@ SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${SIZE%x*}; H=$
 
 echo "--- Launching the app (opens on Home)"
 adb shell am start -W -n "$PKG/.MainActivity"
-wait_for home 'text="Welcome to Kural"' 30 "Home doesn't show the welcome"
+wait_for home 'text="Welcome to Yap"' 30 "Home doesn't show the welcome"
 sleep 6
 dump home
 shot 1-home
@@ -177,7 +177,7 @@ sleep 1
 hide_keyboard
 dump add2
 tap add2 "Open"
-wait_for show 'text="Kural Test Show"' 40 "the test show's page didn't open"
+wait_for show 'text="Yap Test Show"' 40 "the test show's page didn't open"
 wait_for show 'text="Episode One With Chapters"' 20 "the test show has no episodes"
 shot 4-show
 tap show "Follow"
@@ -256,9 +256,9 @@ adb shell input keyevent KEYCODE_BACK # close the full player
 sleep 1
 dump back-home
 tap back-home "Library" last
-wait_for library 'text="Kural Test Show"' 15 "the Library doesn't list the followed show"
+wait_for library 'text="Yap Test Show"' 15 "the Library doesn't list the followed show"
 shot 10-library
-tap library "Kural Test Show"
+tap library "Yap Test Show"
 wait_for show-again 'text="Episode Two Plain"' 15 "the show page didn't open from the Library"
 tap show-again "More for Episode Two Plain"
 sleep 1
@@ -286,7 +286,7 @@ sleep 1
 hide_keyboard
 dump add4
 tap add4 "Open"
-wait_for huge 'text="Kural Huge Show"' 90 "the huge show's page didn't open"
+wait_for huge 'text="Yap Huge Show"' 90 "the huge show's page didn't open"
 wait_for huge 'text="Huge Episode 1500"' 30 "the huge show's newest episode isn't listed"
 tap huge "Follow"
 wait_for huge-following 'text="Following"' 90 "following the huge show didn't work"
@@ -320,7 +320,7 @@ echo "--- Home with shows followed"
 dump before-home
 tap before-home "Home" last
 wait_for home-full 'text="Your shows"' 15 "Home doesn't list the shows you follow"
-grep -q 'text="Kural Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
+grep -q 'text="Yap Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
 grep -q 'text="Latest from your shows"' "$OUT/home-full.xml" || fail "Home doesn't show the latest episodes from your shows"
 shot 14-home-following
 for _ in 1 2 3 4 5 6; do grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml" 2>/dev/null && break; scroll_down; dump home-full2; done

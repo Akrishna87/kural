@@ -55,7 +55,7 @@ fun HomeScreen(vm: PodcastViewModel) {
                     Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Kural", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+                    Text("Yap", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
                     IconButton(onClick = vm::refreshAll) { Icon(Icons.Rounded.Refresh, "Check for new episodes") }
                     IconButton(onClick = { vm.open(Screen.Alerts) }) { Icon(Icons.Rounded.NotificationsActive, "Alerts") }
                     IconButton(onClick = { vm.open(Screen.SettingsPage) }) { Icon(Icons.Rounded.Settings, "Settings") }
@@ -70,7 +70,7 @@ fun HomeScreen(vm: PodcastViewModel) {
                 item {
                     EmptyState(
                         Icons.Rounded.Podcasts,
-                        "Welcome to Kural",
+                        "Welcome to Yap",
                         "Follow a few shows and their episodes will land here. No account, no ads.",
                         action = "Find podcasts",
                         onAction = { vm.selectSection(Section.DISCOVER) },
