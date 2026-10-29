@@ -214,6 +214,8 @@ fun PlayerScreen(vm: PodcastViewModel) {
                     active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
                 ) { dialog = "sleep" }
                 PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
+                val starred = vm.state(e.id)?.starred == true
+                PlayerPill(if (starred) Icons.Rounded.Star else Icons.Rounded.StarOutline, null, if (starred) "Remove star" else "Star this episode", active = starred) { vm.toggleStar(e) }
                 PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
                 PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
                     vm.selectSection(Section.UP_NEXT)

@@ -260,7 +260,9 @@ wait_for library 'text="Yap Test Show"' 15 "the Library doesn't list the followe
 shot 10-library
 tap library "Yap Test Show"
 wait_for show-again 'text="Episode Two Plain"' 15 "the show page didn't open from the Library"
-tap show-again "More for Episode Two Plain"
+tap show-again "Star Episode Two Plain"
+wait_for starred-episode 'content-desc="Remove star from Episode Two Plain"' 10 "starring the episode didn't work"
+tap starred-episode "More for Episode Two Plain"
 sleep 1
 dump menu
 tap menu "Play last"
@@ -272,8 +274,17 @@ grep -q 'text="NOW PLAYING"' "$OUT/upnext.xml" || fail "Up Next doesn't show wha
 shot 11-up-next
 echo "PASS: Up Next"
 
+echo "--- Starred episodes"
+tap upnext "Library" last
+sleep 1
+dump library-again
+tap library-again "Starred"
+wait_for starred 'text="Episode Two Plain"' 10 "the starred episode isn't under Library → Starred"
+shot 11b-starred
+echo "PASS: starred episodes"
+
 echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
-tap upnext "Discover" last
+tap starred "Discover" last
 sleep 2
 dump discover3
 for _ in 1 2 3 4; do grep -q 'text="Add by feed address"' "$OUT/discover3.xml" && break; scroll_down; dump discover3; done

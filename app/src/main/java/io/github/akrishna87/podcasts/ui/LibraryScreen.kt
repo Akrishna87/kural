@@ -58,7 +58,7 @@ fun LibraryScreen(vm: PodcastViewModel) {
                 EmptyState(Icons.Rounded.DownloadForOffline, "No downloads", "Download episodes to listen without a connection. Shows can download new episodes by themselves, too.")
             }
             LibraryTab.STARRED -> EpisodeList(vm, vm.snap.starred) {
-                EmptyState(Icons.Rounded.StarOutline, "Nothing starred", "Star episodes you love or want to come back to.")
+                EmptyState(Icons.Rounded.StarOutline, "Nothing starred", "Tap ☆ next to any episode to keep it here.")
             }
             LibraryTab.BOOKMARKS -> BookmarksList(vm)
             LibraryTab.HISTORY -> EpisodeList(vm, vm.snap.history) {
