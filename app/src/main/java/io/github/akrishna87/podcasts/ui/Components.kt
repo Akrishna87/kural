@@ -183,7 +183,6 @@ fun EpisodeRow(
             )
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (s?.starred == true) StatusIcon(Icons.Rounded.Star, Palette.Gold, "Starred")
                 when {
                     s?.downloaded == true -> StatusIcon(Icons.Rounded.DownloadDone, Palette.Green, "Downloaded")
                     dl != null || (s?.downloadId ?: 0L) != 0L -> StatusIcon(Icons.Rounded.Downloading, Palette.Violet, "Downloading")
@@ -206,6 +205,7 @@ fun EpisodeRow(
                 else ProgressLine(progress, Modifier.fillMaxWidth(0.85f))
             }
         }
+        StarButton(vm, e)
         if (trailing != null) {
             trailing()
         } else {
@@ -219,6 +219,20 @@ fun EpisodeRow(
 private fun StatusIcon(icon: ImageVector, tint: Color, description: String) {
     Icon(icon, description, tint = tint, modifier = Modifier.size(14.dp))
     Spacer(Modifier.width(5.dp))
+}
+
+/** One tap to star an episode, or take its star away. Starred episodes are listed under Library → Starred. */
+@Composable
+fun StarButton(vm: PodcastViewModel, e: Episode) {
+    val starred = vm.state(e.id)?.starred == true
+    IconButton(onClick = { vm.toggleStar(e) }, modifier = Modifier.size(36.dp)) {
+        Icon(
+            if (starred) Icons.Rounded.Star else Icons.Rounded.StarOutline,
+            if (starred) "Remove star from ${e.title}" else "Star ${e.title}",
+            tint = if (starred) Palette.Gold else Palette.Faint,
+            modifier = Modifier.size(22.dp),
+        )
+    }
 }
 
 /** A round play/pause button for an episode. */

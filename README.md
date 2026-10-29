@@ -46,7 +46,8 @@ Reddit, and from what users praise in the leading apps.
 
 There are more touches throughout: artwork-tinted player and show pages, Podcasting 2.0
 **funding** links ("Support the show"), hosts and guests on episode pages, search inside your
-own shows, mark all played, and stars.
+own shows, mark all played, and stars: tap ☆ next to any episode (or in the player) to keep it
+under **Library → Starred**.
 
 ## How it's built
 
