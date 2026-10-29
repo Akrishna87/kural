@@ -232,12 +232,27 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     @Synchronized
     fun setSubscribed(id: String, subscribed: Boolean) {
         val e = podcasts[id] ?: return
-        podcasts[id] = e.copy(subscribed = subscribed, subscribedAt = if (subscribed) System.currentTimeMillis() else e.subscribedAt)
+        // Starred shows are a pick of the ones you follow, so unfollowing takes the star away too.
+        podcasts[id] = e.copy(
+            subscribed = subscribed,
+            subscribedAt = if (subscribed) System.currentTimeMillis() else e.subscribedAt,
+            starred = e.starred && subscribed,
+        )
         if (!subscribed) {
             // Clear the inbox of this show's episodes.
             states.values.filter { it.podcastId == id && it.isNew }.forEach { states[it.episodeId] = it.copy(isNew = false) }
             dirty("states.json")
         }
+        dirty("podcasts.json")
+        changed()
+    }
+
+    /** Stars a show you follow, or takes its star away. */
+    @Synchronized
+    fun setStarred(id: String, starred: Boolean) {
+        val e = podcasts[id] ?: return
+        if (starred && !e.subscribed) return
+        podcasts[id] = e.copy(starred = starred)
         dirty("podcasts.json")
         changed()
     }

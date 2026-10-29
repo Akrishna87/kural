@@ -90,6 +90,14 @@ private fun ShowPage(vm: PodcastViewModel, feedUrl: String) {
                         IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
                         Spacer(Modifier.weight(1f))
                         if (following) {
+                            val starred = entry?.starred == true
+                            IconButton(onClick = { vm.toggleShowStar(feedUrl) }) {
+                                Icon(
+                                    if (starred) Icons.Rounded.Star else Icons.Rounded.StarOutline,
+                                    if (starred) "Remove star from this show" else "Star this show",
+                                    tint = if (starred) Palette.Gold else LocalContentColor.current,
+                                )
+                            }
                             IconButton(onClick = { vm.refresh(feedUrl) }) { Icon(Icons.Rounded.Refresh, "Refresh this show") }
                             IconButton(onClick = { vm.open(Screen.ShowSettings(feedUrl)) }) { Icon(Icons.Rounded.Tune, "Show settings") }
                         }

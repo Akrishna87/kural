@@ -215,7 +215,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         val shows = lib.subscriptions().map { entry ->
             val eps = lib.episodes(entry.id)
             ShowRow(entry, eps.firstOrNull()?.publishedAt ?: 0, eps.count { lib.state(it.id)?.played != true && it.type != "trailer" })
-        }.sortedByDescending { it.latestAt }
+        }.sortedWith(compareByDescending<ShowRow> { it.entry.starred }.thenByDescending { it.latestAt })
         val queue = lib.queueEpisodes()
         val newEpisodes = lib.newEpisodes().map { it.first }
         val skip = (queue + newEpisodes).mapTo(HashSet()) { it.id }
@@ -331,6 +331,12 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         val title = lib.podcast(id)?.title.orEmpty()
         lib.setSubscribed(id, false)
         say("Stopped following “$title”")
+    }
+
+    fun toggleShowStar(id: String) {
+        val on = lib.entry(id)?.starred != true
+        lib.setStarred(id, on)
+        say(if (on) "Starred “${lib.podcast(id)?.title.orEmpty()}”" else "Removed the star")
     }
 
     var refreshing by mutableStateOf(false); private set

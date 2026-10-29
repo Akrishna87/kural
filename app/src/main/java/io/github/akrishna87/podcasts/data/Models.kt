@@ -265,6 +265,8 @@ data class PodcastEntry(
     val podcast: Podcast,
     val subscribed: Boolean,
     val subscribedAt: Long = 0,
+    /** One of your favourites: listed first, and together under Library → Starred. */
+    val starred: Boolean = false,
     val settings: PodcastSettings = PodcastSettings(),
     val lastRefreshAt: Long = 0,
     /** HTTP validators so unchanged feeds aren't downloaded again. */
@@ -277,6 +279,7 @@ data class PodcastEntry(
         .put("podcast", podcast.toJson())
         .put("subscribed", subscribed)
         .put("subscribedAt", subscribedAt)
+        .put("starred", starred)
         .put("settings", settings.toJson())
         .put("lastRefreshAt", lastRefreshAt)
         .putOpt("etag", etag)
@@ -287,6 +290,7 @@ data class PodcastEntry(
             podcast = Podcast.fromJson(o.getJSONObject("podcast")),
             subscribed = o.optBoolean("subscribed"),
             subscribedAt = o.optLong("subscribedAt"),
+            starred = o.optBoolean("starred"),
             settings = PodcastSettings.fromJson(o.optJSONObject("settings")),
             lastRefreshAt = o.optLong("lastRefreshAt"),
             etag = o.optStringOrNull("etag"),

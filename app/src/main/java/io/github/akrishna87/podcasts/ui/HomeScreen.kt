@@ -114,6 +114,7 @@ fun HomeScreen(vm: PodcastViewModel) {
                                 { vm.openPodcast(row.entry.id) },
                                 Modifier.width(112.dp),
                                 badge = newByShow[row.entry.id] ?: 0,
+                                starred = row.entry.starred,
                             )
                         }
                     }

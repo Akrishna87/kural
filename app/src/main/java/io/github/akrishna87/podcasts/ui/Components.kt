@@ -289,10 +289,15 @@ fun MenuItem(text: String, icon: ImageVector, onClick: () -> Unit) {
 
 /** A show's artwork with its name underneath, for grids and rows. */
 @Composable
-fun ShowTile(title: String, author: String, artworkUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, badge: Int = 0) {
+fun ShowTile(title: String, author: String, artworkUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, badge: Int = 0, starred: Boolean = false) {
     Column(modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(4.dp)) {
         Box {
             Artwork(artworkUrl, title, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(10.dp), titleSize = 12)
+            if (starred) {
+                Box(Modifier.align(Alignment.TopStart).padding(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.55f)).padding(3.dp)) {
+                    Icon(Icons.Rounded.Star, "Starred", tint = Palette.Gold, modifier = Modifier.size(16.dp))
+                }
+            }
             if (badge > 0) {
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(6.dp).clip(CircleShape).background(Palette.Coral).padding(horizontal = 7.dp, vertical = 2.dp),

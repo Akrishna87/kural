@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -57,9 +58,7 @@ fun LibraryScreen(vm: PodcastViewModel) {
             }) {
                 EmptyState(Icons.Rounded.DownloadForOffline, "No downloads", "Download episodes to listen without a connection. Shows can download new episodes by themselves, too.")
             }
-            LibraryTab.STARRED -> EpisodeList(vm, vm.snap.starred) {
-                EmptyState(Icons.Rounded.StarOutline, "Nothing starred", "Star episodes you love or want to come back to.")
-            }
+            LibraryTab.STARRED -> StarredList(vm)
             LibraryTab.BOOKMARKS -> BookmarksList(vm)
             LibraryTab.HISTORY -> EpisodeList(vm, vm.snap.history) {
                 EmptyState(Icons.Rounded.History, "No history yet", "Episodes you play show up here.")
@@ -92,8 +91,37 @@ private fun ShowsGrid(vm: PodcastViewModel) {
         // The badge counts each show's new episodes still in the inbox.
         val newByShow = vm.snap.newEpisodes.groupingBy { it.podcastId }.eachCount()
         items(shows, key = { it.entry.id }) { row ->
-            ShowTile(row.entry.podcast.title, "", row.entry.podcast.artworkUrl, { vm.openPodcast(row.entry.id) }, badge = newByShow[row.entry.id] ?: 0)
+            ShowTile(row.entry.podcast.title, "", row.entry.podcast.artworkUrl, { vm.openPodcast(row.entry.id) }, badge = newByShow[row.entry.id] ?: 0, starred = row.entry.starred)
         }
+    }
+}
+
+@Composable
+private fun StarredList(vm: PodcastViewModel) {
+    val shows = vm.snap.shows.filter { it.entry.starred }
+    val episodes = vm.snap.starred
+    if (vm.snap.loaded && shows.isEmpty() && episodes.isEmpty()) {
+        EmptyState(Icons.Rounded.StarOutline, "Nothing starred", "Tap ☆ on a show's page to make it a favourite, or star episodes you love or want to come back to.")
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
+        item { SectionTitle("Starred shows") }
+        if (shows.isEmpty()) {
+            item { Text("Tap ☆ on a show's page to make it a favourite.", color = Palette.SubText, modifier = Modifier.padding(horizontal = 16.dp)) }
+        } else {
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(shows, key = { it.entry.id }) { row ->
+                        ShowTile(row.entry.podcast.title, row.entry.podcast.author, row.entry.podcast.artworkUrl, { vm.openPodcast(row.entry.id) }, Modifier.width(112.dp))
+                    }
+                }
+            }
+        }
+        item { SectionTitle("Starred episodes") }
+        if (episodes.isEmpty()) {
+            item { Text("Star episodes you love or want to come back to.", color = Palette.SubText, modifier = Modifier.padding(horizontal = 16.dp)) }
+        }
+        items(episodes, key = { it.id }) { e -> EpisodeRow(vm, e) }
     }
 }
 

@@ -131,6 +131,20 @@ class LibraryTest {
     }
 
     @Test
+    fun starredShowsAreSavedAndLostOnUnfollow() {
+        val lib = library()
+        lib.remember(podcast, listOf(ep(1)))
+        lib.setStarred(feedUrl, true)
+        assertFalse(lib.entry(feedUrl)!!.starred) // only shows you follow can be starred
+        lib.setSubscribed(feedUrl, true)
+        lib.setStarred(feedUrl, true)
+        lib.flush()
+        assertTrue(library().entry(feedUrl)!!.starred)
+        lib.setSubscribed(feedUrl, false)
+        assertFalse(lib.entry(feedUrl)!!.starred)
+    }
+
+    @Test
     fun searchResultsCanBeRemembered() {
         val lib = library()
         lib.remember(podcast, listOf(ep(5)))
