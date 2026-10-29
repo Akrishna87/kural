@@ -240,7 +240,7 @@ shot 8b-clip
 tap clip "Save to phone"
 saved=""
 for _ in $(seq 1 30); do
-  saved=$(adb shell ls -l /sdcard/Music/Yap/ 2>/dev/null | tr -d '\r' | awk '/\.m4a$/ {print $5; exit}')
+  saved=$(adb shell ls -l /sdcard/Music/Yap/ 2>/dev/null | tr -d '\r' | awk '/\.m4a$/ {print $5; exit}' || true)
   [ -n "$saved" ] && break
   sleep 2
 done
