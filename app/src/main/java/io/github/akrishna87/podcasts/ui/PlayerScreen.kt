@@ -79,6 +79,7 @@ fun PlayerScreen(vm: PodcastViewModel) {
                     Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
                     Text(show, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                StarButton(vm, e)
                 Box(Modifier.offset(x = 12.dp)) {
                     EpisodeMenu(vm, e) { close ->
                         MenuItem("Episode details", Icons.Rounded.Info) { close(); vm.openEpisode(e) }
@@ -214,8 +215,7 @@ fun PlayerScreen(vm: PodcastViewModel) {
                     active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
                 ) { dialog = "sleep" }
                 PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
-                val starred = vm.state(e.id)?.starred == true
-                PlayerPill(if (starred) Icons.Rounded.Star else Icons.Rounded.StarOutline, null, if (starred) "Remove star" else "Star this episode", active = starred) { vm.toggleStar(e) }
+                PlayerPill(Icons.Rounded.ContentCut, null, "Clip this part") { dialog = "clip" }
                 PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
                 PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
                     vm.selectSection(Section.UP_NEXT)
@@ -228,6 +228,7 @@ fun PlayerScreen(vm: PodcastViewModel) {
         "speed" -> SpeedDialog(fx.speed, vm::changeSpeed, { dialog = null }, note = if (vm.showHasCustomEffects()) "For “$show” only" else "For every show without its own speed")
         "sleep" -> SleepDialog(vm, hasChapters = chapters.isNotEmpty()) { dialog = null }
         "effects" -> EffectsDialog(vm, show) { dialog = null }
+        "clip" -> ClipDialog(vm, e) { dialog = null }
         "bookmark" -> {
             var note by remember { mutableStateOf("") }
             val at = remember { vm.positionMs }

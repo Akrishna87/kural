@@ -233,6 +233,36 @@ dump player-fast
 grep -q 'text="1.5×"' "$OUT/player-fast.xml" || fail "the speed didn't change to 1.5×"
 echo "PASS: playback speed"
 
+echo "--- Clips: save one to the phone, share another"
+tap player-fast "Clip this part"
+wait_for clip 'text="Save to phone"' 10 "the clip editor didn't open"
+shot 8b-clip
+tap clip "Save to phone"
+saved=""
+for _ in $(seq 1 30); do
+  saved=$(adb shell ls -l /sdcard/Music/Yap/ 2>/dev/null | tr -d '\r' | awk '/\.m4a$/ {print $5; exit}')
+  [ -n "$saved" ] && break
+  sleep 2
+done
+[ -n "$saved" ] || fail "the clip wasn't saved to Music/Yap"
+[ "$saved" -gt 10000 ] || fail "the saved clip is too small ($saved bytes)"
+echo "PASS: a 30-second clip was saved to Music/Yap ($saved bytes)"
+sleep 2
+dump player-clip
+tap player-clip "Clip this part"
+wait_for clip2 'text="Share clip"' 10 "the clip editor didn't open again"
+tap clip2 "Share clip"
+shared=""
+for _ in $(seq 1 30); do
+  adb shell dumpsys window | grep "mCurrentFocus" | grep -qi "chooser\|resolver" && { shared=yes; break; }
+  sleep 2
+done
+[ -n "$shared" ] || fail "sharing the clip didn't open the share sheet"
+shot 8c-share-clip
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+echo "PASS: sharing a clip opens the share sheet"
+
 echo "--- Background playback"
 adb shell input keyevent KEYCODE_HOME
 sleep 8

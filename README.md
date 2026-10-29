@@ -34,6 +34,7 @@ Reddit, and from what users praise in the leading apps.
 | Chapters | Feed chapters (Podlove), Podcasting 2.0 JSON chapters, and **ID3 chapters inside the MP3**. Chapter list, next/previous chapter buttons and chapter artwork. |
 | Transcripts (Apple Podcasts) | Podcasting 2.0 transcripts (JSON, WebVTT, SRT, HTML). A synced view highlights the line being spoken; tap a line to jump there. |
 | "Find specific moments in episodes" | **Timestamps in show notes are tappable** and jump to that moment. Links in notes open too. |
+| "Let me cut out the bit I loved and send it" | **Clip this part** in the player: drag the clip's ends (it starts as the 30 seconds you just heard), nudge them or set one to *Now*, preview it, then **Save to phone** (Music/Yap) or **Share clip** as an audio file to any app. Clips can be up to 10 minutes. |
 | Bookmarks and notes (Pocket Casts forum) | **Bookmark** any moment with an optional note. Bookmarks are listed per episode and in Library, and you can share a moment. |
 | "Alert me when my favourite guest appears on any show" | **Guests & topics**: follow a name or topic and Yap searches every podcast in Apple's directory for new episodes that mention it, with notifications. **Tap a guest** on an episode to find their other appearances. |
 | Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, starred, released in the last N days, under N minutes). |
@@ -63,6 +64,8 @@ background refresh, Coil for artwork and AndroidX Palette for artwork colours.
 - `PlaybackService.kt` owns the player and keeps it in step with Up Next. It applies each show's
   speed and effects, skips intros and outros, runs the sleep timer, reads ID3 chapters, keeps
   stats, and serves Android Auto (`CarLibrary.kt`).
+- `Clips.kt` cuts clips with Media3 Transformer (to AAC in .m4a), from the download if there is
+  one, saves them through MediaStore and shares them through a FileProvider.
 - `Refresh.kt` checks feeds (politely, with ETag/Last-Modified), handles new episodes as each
   show's settings say, checks guest and topic alerts, and posts notifications.
 - `ci/icon/gen.py` draws the launcher icon: a lime "yap" speech-bubble sticker (thick outlines,

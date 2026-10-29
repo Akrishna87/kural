@@ -78,6 +78,17 @@
             </intent-filter>
         </service>
 
+        <!-- Hands a clip you share to the app you share it with. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.clips"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/clip_paths" />
+        </provider>
+
         <!-- Android Auto: browse Up Next, new episodes, downloads and your shows from the car. -->
         <meta-data
             android:name="com.google.android.gms.car.application"
