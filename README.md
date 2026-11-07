@@ -14,7 +14,8 @@ Podwave is a free podcast player for Android. It has no account, ads or tracking
 3. Open **Podwave**. Find shows in **Discover**, or bring your shows from another app with
    **Import from another app (OPML)**.
 
-To update, install a newer `Podwave.apk` the same way. It installs over the old one and keeps
+To update, open **Settings → App updates → Check for updates** (Podwave only asks GitHub when
+you tap it, never by itself), or install a newer `Podwave.apk` the same way. It installs over the old one and keeps
 your shows, Up Next and your place in every episode.
 
 ## What listeners asked for, and where it is
