@@ -420,8 +420,11 @@ tap before-home "Home" last
 wait_for home-full 'text="Your shows"' 15 "Home doesn't list the shows you follow"
 grep -q 'text="Podwave Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
 grep -q 'text="Favourites"' "$OUT/home-full.xml" || echo "WARNING: Home's Favourites row isn't on the first screen"
-grep -q 'text="Latest from your shows"' "$OUT/home-full.xml" || fail "Home doesn't show the latest episodes from your shows"
 shot 14-home-following
+# With an episode in progress, Continue listening comes first, so this may be further down.
+cp "$OUT/home-full.xml" "$OUT/home-latest.xml"
+for _ in 1 2 3 4; do grep -q 'text="Latest from your shows"' "$OUT/home-latest.xml" && break; scroll_down; dump home-latest; done
+grep -q 'text="Latest from your shows"' "$OUT/home-latest.xml" || fail "Home doesn't show the latest episodes from your shows"
 for _ in 1 2 3 4 5 6; do grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml" 2>/dev/null && break; scroll_down; dump home-full2; done
 shot 15-home-suggestions
 if grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml"; then
