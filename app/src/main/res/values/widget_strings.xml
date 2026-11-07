@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home-screen widget (PlayerWidget.kt). -->
+<resources>
+    <string name="widget_description">See the episode you\'re on and play, pause or skip from your home screen</string>
+    <string name="widget_empty">Pick an episode in Podwave</string>
+    <string name="widget_tap_to_open">Tap to open</string>
+    <string name="widget_play">Play</string>
+    <string name="widget_pause">Pause</string>
+    <string name="widget_back">Skip back</string>
+    <string name="widget_forward">Skip forward</string>
+    <string name="widget_back_seconds">Back %1$d seconds</string>
+    <string name="widget_forward_seconds">Forward %1$d seconds</string>
+</resources>

@@ -57,6 +57,9 @@ tab under **Library → Favourites**.
 Podwave open and waking it shows the player with the episode's artwork full width, a heart,
 the seek bar and the controls, without unlocking. Everything else still needs unlocking.
 
+**Home-screen widget**: the episode's artwork, title and show with skip back, play/pause and
+skip forward (your skip lengths), working even with the app closed; tap it to open Podwave.
+
 ## How it's built
 
 It uses Kotlin and Jetpack Compose, with Media3 (ExoPlayer) for audio, WorkManager for the

@@ -132,6 +132,7 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(openApp)
             .setCustomLayout(skipButtons())
             .build()
+        PlayerWidget.attach(this, player)
 
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -210,6 +211,7 @@ class PlaybackService : MediaLibraryService() {
         lib.flush()
         prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         scope.cancel()
+        PlayerWidget.detach(this)
         session?.release()
         session = null
         loudness?.release()
