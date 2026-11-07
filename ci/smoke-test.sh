@@ -316,7 +316,9 @@ shot 11b-starred
 echo "PASS: favourites"
 
 echo "--- Player on the lock screen"
-playing || { adb shell input keyevent KEYCODE_MEDIA_PLAY; sleep 2; }
+# Paused, so the episode can't end and change while the test taps the heart.
+adb shell input keyevent KEYCODE_MEDIA_PAUSE
+sleep 1
 adb shell locksettings set-pin 1111 > /dev/null
 adb shell input keyevent KEYCODE_SLEEP
 sleep 2
@@ -326,11 +328,15 @@ dump lock
 shot 11c-lock-screen
 grep -q 'content-desc="Lock screen player"' "$OUT/lock.xml" || fail "waking the locked phone didn't show the player over the lock screen"
 grep -q 'text="Library"' "$OUT/lock.xml" && fail "the library is reachable from the lock screen"
-grep -q 'text="Episode One With Chapters"' "$OUT/lock.xml" || fail "the lock-screen player doesn't show the episode that's playing"
-tap lock "Add to Favourites"
+LOCK_EP=$(grep -o 'text="Episode [^"]*"' "$OUT/lock.xml" | head -1 | sed 's/^text="//; s/"$//')
+[ -n "$LOCK_EP" ] || fail "the lock-screen player doesn't show the episode"
+# The heart: add it to Favourites (or take it out, if it's already there) without unlocking.
+if grep -q 'content-desc="Remove from Favourites"' "$OUT/lock.xml"; then BEFORE="Remove from Favourites"; AFTER="Add to Favourites"; else BEFORE="Add to Favourites"; AFTER="Remove from Favourites"; fi
+tap lock "$BEFORE"
 sleep 1
 dump lock-loved
-grep -q 'content-desc="Remove from Favourites"' "$OUT/lock-loved.xml" || fail "tapping the heart on the lock screen didn't change it"
+shot 11d-lock-screen-loved
+grep -q "content-desc=\"$AFTER\"" "$OUT/lock-loved.xml" || fail "tapping the heart on the lock screen didn't change it"
 grep -q 'content-desc="Lock screen player"' "$OUT/lock-loved.xml" || fail "tapping the heart left the lock-screen player"
 tap lock-loved "Unlock to open Podwave"
 sleep 2
@@ -339,8 +345,14 @@ adb shell input keyevent KEYCODE_ENTER
 sleep 3
 dump unlocked
 grep -q 'text="Library"' "$OUT/unlocked.xml" || fail "unlocking didn't go back to the app"
-grep -q 'content-desc="Remove Episode One With Chapters from Favourites"' "$OUT/unlocked.xml" || fail "the heart tapped on the lock screen wasn't saved to Favourites"
+# Library → Favourites is on screen: the episode is listed there now only if the heart added it.
+if [ "$AFTER" = "Remove from Favourites" ]; then
+  grep -q "content-desc=\"Remove $LOCK_EP from Favourites\"" "$OUT/unlocked.xml" || fail "the heart tapped on the lock screen wasn't saved to Favourites"
+else
+  grep -q "content-desc=\"Remove $LOCK_EP from Favourites\"" "$OUT/unlocked.xml" && fail "taking the heart off on the lock screen wasn't saved"
+fi
 adb shell locksettings clear --old 1111 > /dev/null
+adb shell input keyevent KEYCODE_MEDIA_PLAY
 echo "PASS: the player shows over the lock screen, and only the player; its heart adds to Favourites"
 
 echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
