@@ -47,6 +47,8 @@ fun SettingsScreen(vm: PodcastViewModel) {
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", onBack = { vm.back() })
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = LocalBottomSpace.current)) {
+            item { SettingsHeader("Appearance") }
+            item { AppearanceSettings() }
             item { SettingsHeader("Playback") }
             item {
                 SettingRow("Speed", speedLabel(Settings.speed(p)), "For shows without their own") { pick = "speed" }

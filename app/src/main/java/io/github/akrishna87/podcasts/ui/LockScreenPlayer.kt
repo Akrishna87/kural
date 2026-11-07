@@ -79,88 +79,91 @@ fun LockScreenPlayer(vm: PodcastViewModel) {
     val duration = vm.durationMs
     val prefs = vm.prefs()
     BackHandler {} // Back does nothing here; unlock to leave.
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(tint.deep(0.15f), tint.deep(0.7f), Color(0xFF070709))))
-            .semantics { contentDescription = "Lock screen player" },
-    ) {
-        Column(
-            Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 28.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    // Dark in every theme, tinted by the artwork.
+    AlwaysDark {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(tint.deep(0.15f), tint.deep(0.7f), Color(0xFF070709))))
+                .semantics { contentDescription = "Lock screen player" },
         ) {
-            Text("PODWAVE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
-            Spacer(Modifier.weight(0.6f))
-            Artwork(
-                art,
-                show,
-                Modifier.fillMaxWidth().aspectRatio(1f).shadow(30.dp, RoundedCornerShape(14.dp)),
-                RoundedCornerShape(14.dp),
-                titleSize = 26,
-            )
-            Spacer(Modifier.height(28.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Same width as the heart, so the title stays centred.
-                Spacer(Modifier.width(48.dp))
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(e.title, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, color = Color.White)
-                    Text(show, color = Color.White.copy(alpha = 0.7f), fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                val loved = vm.state(e.id)?.starred == true
-                IconButton(onClick = { vm.toggleStar(e) }, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        if (loved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        if (loved) "Remove from Favourites" else "Add to Favourites",
-                        tint = if (loved) Palette.Heart else Color.White,
-                        modifier = Modifier.size(30.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            var dragging by remember { mutableStateOf<Float?>(null) }
-            val fraction = if (duration > 0) vm.positionMs.toFloat() / duration else 0f
-            Slider(
-                value = dragging ?: fraction,
-                onValueChange = { dragging = it },
-                onValueChangeFinished = {
-                    dragging?.let { vm.seekTo((it * duration).toLong()) }
-                    dragging = null
-                },
-                enabled = duration > 0,
-                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.22f)),
-            )
-            Row(Modifier.fillMaxWidth()) {
-                Text(formatClock(vm.positionMs), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
-                Text(if (duration > 0) "−" + formatClock(duration - vm.positionMs) else "", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                IconButton(onClick = vm::seekBack, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Rounded.Replay, "Back ${Settings.skipBackSec(prefs)} seconds", tint = Color.White, modifier = Modifier.size(38.dp))
-                }
-                Surface(onClick = vm::togglePlay, shape = CircleShape, color = Color.White, contentColor = Color.Black, modifier = Modifier.size(78.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 28.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("PODWAVE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                Spacer(Modifier.weight(0.6f))
+                Artwork(
+                    art,
+                    show,
+                    Modifier.fillMaxWidth().aspectRatio(1f).shadow(30.dp, RoundedCornerShape(14.dp)),
+                    RoundedCornerShape(14.dp),
+                    titleSize = 26,
+                )
+                Spacer(Modifier.height(28.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    // Same width as the heart, so the title stays centred.
+                    Spacer(Modifier.width(48.dp))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(e.title, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, color = Color.White)
+                        Text(show, color = Color.White.copy(alpha = 0.7f), fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    val loved = vm.state(e.id)?.starred == true
+                    IconButton(onClick = { vm.toggleStar(e) }, modifier = Modifier.size(48.dp)) {
                         Icon(
-                            if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            if (vm.isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(44.dp),
+                            if (loved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            if (loved) "Remove from Favourites" else "Add to Favourites",
+                            tint = if (loved) LocalAppColors.current.heart else Color.White,
+                            modifier = Modifier.size(30.dp),
                         )
                     }
                 }
-                IconButton(onClick = vm::seekForward, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Rounded.FastForward, "Forward ${Settings.skipForwardSec(prefs)} seconds", tint = Color.White, modifier = Modifier.size(38.dp))
+                Spacer(Modifier.height(14.dp))
+                var dragging by remember { mutableStateOf<Float?>(null) }
+                val fraction = if (duration > 0) vm.positionMs.toFloat() / duration else 0f
+                Slider(
+                    value = dragging ?: fraction,
+                    onValueChange = { dragging = it },
+                    onValueChangeFinished = {
+                        dragging?.let { vm.seekTo((it * duration).toLong()) }
+                        dragging = null
+                    },
+                    enabled = duration > 0,
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.22f)),
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    Text(formatClock(vm.positionMs), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                    Spacer(Modifier.weight(1f))
+                    Text(if (duration > 0) "−" + formatClock(duration - vm.positionMs) else "", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                 }
-            }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = {
-                val activity = context as? Activity ?: return@TextButton
-                val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                if (Build.VERSION.SDK_INT >= 26) keyguard.requestDismissKeyguard(activity, null)
-            }) {
-                Icon(Icons.Rounded.LockOpen, contentDescription = null, tint = Color.White.copy(alpha = 0.8f))
-                Spacer(Modifier.width(8.dp))
-                Text("Unlock to open Podwave", color = Color.White.copy(alpha = 0.8f))
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                    IconButton(onClick = vm::seekBack, modifier = Modifier.size(64.dp)) {
+                        Icon(Icons.Rounded.Replay, "Back ${Settings.skipBackSec(prefs)} seconds", tint = Color.White, modifier = Modifier.size(38.dp))
+                    }
+                    Surface(onClick = vm::togglePlay, shape = CircleShape, color = Color.White, contentColor = Color.Black, modifier = Modifier.size(78.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                if (vm.isPlaying) "Pause" else "Play",
+                                modifier = Modifier.size(44.dp),
+                            )
+                        }
+                    }
+                    IconButton(onClick = vm::seekForward, modifier = Modifier.size(64.dp)) {
+                        Icon(Icons.Rounded.FastForward, "Forward ${Settings.skipForwardSec(prefs)} seconds", tint = Color.White, modifier = Modifier.size(38.dp))
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = {
+                    val activity = context as? Activity ?: return@TextButton
+                    val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                    if (Build.VERSION.SDK_INT >= 26) keyguard.requestDismissKeyguard(activity, null)
+                }) {
+                    Icon(Icons.Rounded.LockOpen, contentDescription = null, tint = Color.White.copy(alpha = 0.8f))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Unlock to open Podwave", color = Color.White.copy(alpha = 0.8f))
+                }
             }
         }
     }

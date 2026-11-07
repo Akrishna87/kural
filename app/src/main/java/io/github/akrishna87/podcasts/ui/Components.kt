@@ -129,7 +129,7 @@ fun progressOf(e: Episode, s: EpisodeState?): Float {
 /** A thin bar for how far through an episode you are. */
 @Composable
 fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.primary) {
-    Box(modifier.height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f))) {
+    Box(modifier.height(3.dp).clip(CircleShape).background(LocalContentColor.current.copy(alpha = 0.15f))) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().background(color))
     }
 }
@@ -229,7 +229,7 @@ fun StarButton(vm: PodcastViewModel, e: Episode) {
         Icon(
             if (starred) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
             if (starred) "Remove ${e.title} from Favourites" else "Add ${e.title} to Favourites",
-            tint = if (starred) Palette.Heart else Palette.Faint,
+            tint = if (starred) LocalAppColors.current.heart else LocalAppColors.current.faint,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -245,13 +245,13 @@ fun PlayButton(vm: PodcastViewModel, e: Episode, size: Int = 40) {
         modifier = Modifier.size((size + 8).dp),
     ) {
         Box(
-            Modifier.size(size.dp).clip(CircleShape).background(if (isCurrent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f)),
+            Modifier.size(size.dp).clip(CircleShape).background(if (isCurrent) MaterialTheme.colorScheme.primary else LocalContentColor.current.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 if (playing) "Pause ${e.title}" else "Play ${e.title}",
-                tint = if (isCurrent) MaterialTheme.colorScheme.onPrimary else Palette.Text,
+                tint = if (isCurrent) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
                 modifier = Modifier.size((size * 0.6f).dp),
             )
         }
@@ -269,7 +269,7 @@ fun EpisodeMenu(
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Rounded.MoreVert, "More for ${e.title}", tint = Palette.SubText) }
+        IconButton(onClick = { open = true }) { Icon(Icons.Rounded.MoreVert, "More for ${e.title}", tint = LocalAppColors.current.subText) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             val s = vm.state(e.id)
             val close = { open = false }
@@ -352,9 +352,9 @@ fun TopBar(title: String, onBack: (() -> Unit)?, actions: @Composable RowScope.(
 @Composable
 fun LoadFailed(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = Palette.SubText)
+        Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = LocalAppColors.current.subText)
         Spacer(Modifier.width(10.dp))
-        Text(message, color = Palette.SubText, modifier = Modifier.weight(1f))
+        Text(message, color = LocalAppColors.current.subText, modifier = Modifier.weight(1f))
         TextButton(onClick = onRetry) { Text("Retry") }
     }
 }
@@ -413,8 +413,8 @@ fun Modifier.horizontalScrollIfNeeded(): Modifier = this.then(Modifier.horizonta
 @Composable
 fun NotesText(notes: RichText, onTime: (Long) -> Unit, modifier: Modifier = Modifier) {
     val linkColor = MaterialTheme.colorScheme.primary
-    val timeColor = Palette.Coral
-    val text: AnnotatedString = remember(notes) {
+    val timeColor = LocalAppColors.current.coral
+    val text: AnnotatedString = remember(notes, linkColor, timeColor) {
         buildAnnotatedString {
             append(notes.text)
             for (s in notes.spans) {
@@ -436,7 +436,7 @@ fun NotesText(notes: RichText, onTime: (Long) -> Unit, modifier: Modifier = Modi
             }
         }
     }
-    Text(text, modifier = modifier, color = Palette.Text.copy(alpha = 0.88f), fontSize = 15.sp, lineHeight = 22.sp)
+    Text(text, modifier = modifier, color = LocalAppColors.current.text.copy(alpha = 0.88f), fontSize = 15.sp, lineHeight = 22.sp)
 }
 
 /** A list of radio choices in a dialog. */

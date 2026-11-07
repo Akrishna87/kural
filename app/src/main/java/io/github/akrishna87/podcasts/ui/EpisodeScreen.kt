@@ -65,7 +65,7 @@ private fun EpisodeDetails(vm: PodcastViewModel, e: Episode) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.deep(0.3f), Palette.Background)))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.wash(0.3f), Palette.Background)))) {
                 Column(Modifier.fillMaxWidth()) {
                     TopBar("", onBack = { vm.back() }) { EpisodeMenu(vm, e) }
                     Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -264,7 +264,7 @@ private fun PeopleRow(vm: PodcastViewModel, people: List<Person>) {
 private fun RoundAction(icon: ImageVector, label: String, active: Boolean = false, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(48.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier.size(48.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else Palette.Text.copy(alpha = 0.08f)),
     ) {
         Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.primary else Palette.Text)
     }
