@@ -80,6 +80,7 @@ class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private val scope = MainScope()
     private var loudness: LoudnessEnhancer? = null
+    private var equaliser: EqualiserEffects? = null
     private val carLibrary by lazy { CarLibrary(this) }
     private val libraryExecutor = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor())
 
@@ -120,6 +121,7 @@ class PlaybackService : MediaLibraryService() {
         } catch (e: Exception) {
             null // some phones have no loudness effect
         }
+        equaliser = EqualiserEffects(this, audioSession) // the equaliser and bass boost, on the same session
         player = PodcastPlayer(exo)
 
         val openApp = PendingIntent.getActivity(
@@ -215,6 +217,7 @@ class PlaybackService : MediaLibraryService() {
         session?.release()
         session = null
         loudness?.release()
+        equaliser?.release()
         exo.release()
         libraryExecutor.shutdown()
         super.onDestroy()

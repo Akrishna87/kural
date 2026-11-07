@@ -29,6 +29,7 @@ Reddit, and from what users praise in the leading apps.
 | A queue you control (Pocket Casts' Up Next) | **Up Next**: play next / play last, drag ≡ to reorder, swipe to remove, total time left (adjusted for speed). Finished episodes leave by themselves. |
 | Inbox triage (Castro) | **New episodes** on Home, each with *Play next*, *Play last* or *Dismiss*. Nothing auto-plays unless you ask. |
 | Smart Speed and Voice Boost (Overcast), Trim Silence (Pocket Casts) | **Trim silence** and **Volume boost** (Off / Low / Medium / High, Medium by default, since many podcasts are mastered quietly), app-wide or per show. The boost lifts the level and limits peaks, so loud parts don't distort. Speed goes from 0.5× to 3× in 0.05 steps. |
+| An equaliser for clearer voices and more bass | **Equaliser** with the phone's presets, your own band curve and **bass boost**, for every show. From the player's sound options or Settings → Playback. |
 | Per-podcast speed and "skip first X seconds" | **Show settings**: custom speed and effects, **skip intro** and **skip outro**, oldest-first order, auto-download, auto-add to Up Next, notifications. |
 | Chronological play for serials | **Oldest first** per show. Serial shows default to it, offer **Play episode 1**, and autoplay continues in order. |
 | Chapters | Feed chapters (Podlove), Podcasting 2.0 JSON chapters, and **ID3 chapters inside the MP3**. Chapter list, next/previous chapter buttons and chapter artwork. |

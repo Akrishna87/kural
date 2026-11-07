@@ -59,7 +59,8 @@ scroll_down() { adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H 
 
 # ----- A test show served from this machine (the emulator sees it as 10.0.2.2) -----
 FEED_DIR="$(mktemp -d)"
-ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=240" -f lavfi -i "anoisesrc=d=240:a=0.02" \
+# Episode one lasts 10 minutes so it's still playing (at 1.5x, from 1:30) when the lock-screen step checks it.
+ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=600" -f lavfi -i "anoisesrc=d=600:a=0.02" \
   -filter_complex "[0][1]amix=inputs=2,volume=2" -ac 1 -ar 22050 -b:a 48k "$FEED_DIR/ep1.mp3"
 ffmpeg -loglevel error -f lavfi -i "sine=frequency=660:duration=120" -ac 1 -ar 22050 -b:a 48k "$FEED_DIR/ep2.mp3"
 cat > "$FEED_DIR/ep1.vtt" <<'VTT'
@@ -86,8 +87,8 @@ cat > "$FEED_DIR/feed.xml" <<XML
       <title>Episode One With Chapters</title>
       <guid>ep-1</guid>
       <pubDate>$NOW_RFC</pubDate>
-      <enclosure url="http://10.0.2.2:8000/ep1.mp3" length="1440000" type="audio/mpeg"/>
-      <itunes:duration>4:00</itunes:duration>
+      <enclosure url="http://10.0.2.2:8000/ep1.mp3" length="3600000" type="audio/mpeg"/>
+      <itunes:duration>10:00</itunes:duration>
       <description><![CDATA[<p>Topics:</p><ul><li>0:00 Hello there</li><li>1:30 The middle part</li></ul>]]></description>
       <psc:chapters version="1.2">
         <psc:chapter start="00:00:00" title="Hello there"/>
@@ -234,6 +235,32 @@ sleep 2
 dump player-fast
 grep -q 'text="1.5×"' "$OUT/player-fast.xml" || fail "the speed didn't change to 1.5×"
 echo "PASS: playback speed"
+
+echo "--- Equaliser (from the player's sound options)"
+tap player-fast "Trim silence and volume boost" last
+wait_for sound 'text="Equaliser"' 10 "the sound options have no Equaliser entry"
+tap sound "Equaliser" last
+wait_for eq 'content-desc="Equaliser on/off"' 10 "the equaliser screen didn't open"
+shot 8a-equaliser
+if grep -q "Hz" "$OUT/eq.xml"; then
+  tap eq "Equaliser on/off"
+  sleep 1
+  tap eq "Equaliser bands" # the middle of the curve: sets a band
+  sleep 1
+  dump eq-on
+  grep -q 'checked="true"' "$OUT/eq-on.xml" || fail "the equaliser didn't turn on"
+  shot 8a-equaliser-on
+  echo "PASS: the equaliser opens and can be adjusted"
+elif grep -q "doesn" "$OUT/eq.xml"; then
+  echo "PASS: the equaliser opens (this emulator has no equaliser effect, and the screen says so)"
+else
+  show eq
+  fail "the equaliser screen shows neither bands nor an explanation"
+fi
+adb shell input keyevent KEYCODE_BACK # back to the player
+wait_for player-fast 'text="NOW PLAYING"' 10 "Back from the equaliser didn't return to the player"
+sleep 1
+dump player-fast
 
 echo "--- Clips: save one to the phone, share another"
 tap player-fast "Clip this part"
@@ -435,8 +462,11 @@ tap before-home "Home" last
 wait_for home-full 'text="Your shows"' 15 "Home doesn't list the shows you follow"
 grep -q 'text="Podwave Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
 grep -q 'text="Favourites"' "$OUT/home-full.xml" || echo "WARNING: Home's Favourites row isn't on the first screen"
-grep -q 'text="Latest from your shows"' "$OUT/home-full.xml" || fail "Home doesn't show the latest episodes from your shows"
 shot 14-home-following
+# With an episode in progress, Continue listening comes first, so this may be further down.
+cp "$OUT/home-full.xml" "$OUT/home-latest.xml"
+for _ in 1 2 3 4; do grep -q 'text="Latest from your shows"' "$OUT/home-latest.xml" && break; scroll_down; dump home-latest; done
+grep -q 'text="Latest from your shows"' "$OUT/home-latest.xml" || fail "Home doesn't show the latest episodes from your shows"
 for _ in 1 2 3 4 5 6; do grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml" 2>/dev/null && break; scroll_down; dump home-full2; done
 shot 15-home-suggestions
 if grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml"; then
