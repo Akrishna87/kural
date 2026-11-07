@@ -1,5 +1,6 @@
 package io.github.akrishna87.podcasts.ui
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,9 +33,19 @@ import androidx.compose.ui.unit.sp
 import io.github.akrishna87.podcasts.PodcastViewModel
 import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.Section
+import io.github.akrishna87.podcasts.Settings
 
 @Composable
 fun PodwaveApp(vm: PodcastViewModel) {
+    // Lock-screen player: with an episode loaded, the app may show over the lock screen, but
+    // only the player does; everything else waits until the phone is unlocked.
+    val activity = LocalContext.current as? Activity
+    val overLockScreen = Settings.lockScreenPlayer(vm.prefs()) && vm.currentId != null
+    LaunchedEffect(overLockScreen) { activity?.showOverLockScreen(overLockScreen) }
+    if (overLockScreen && rememberPhoneLocked()) {
+        LockScreenPlayer(vm)
+        return
+    }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.showPlayer || vm.screens.isNotEmpty() || vm.section != Section.HOME) {

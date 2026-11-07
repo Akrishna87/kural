@@ -93,7 +93,6 @@ class PlaybackService : MediaLibraryService() {
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             Settings.SKIP_BACK, Settings.SKIP_FORWARD -> session?.setCustomLayout(skipButtons())
-            Settings.LOCK_SCREEN_ART -> showOnLockScreen()
             else -> applyEffects()
         }
     }
@@ -139,7 +138,6 @@ class PlaybackService : MediaLibraryService() {
                 savePosition(notify = true)
                 lastTickPos = -1
                 if (isPlaying) maybeRestartSleepTimer()
-                if (isPlaying) showOnLockScreen()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -152,7 +150,6 @@ class PlaybackService : MediaLibraryService() {
                 }
                 applyEffects()
                 refreshHeart()
-                if (exo.isPlaying) showOnLockScreen()
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -209,7 +206,6 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
-        LockScreenArt.clear(this)
         savePosition(notify = false)
         lib.flush()
         prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
@@ -451,23 +447,6 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         if (found.size >= 2) lib.updateState(e) { it.copy(fileChapters = found.distinctBy { c -> c.startMs }.sortedBy { c -> c.startMs }) }
-    }
-
-    // ----- Lock screen -----
-
-    /** The artwork on the lock screen now, so it's only set again when the episode changes. */
-    private var lockScreenArtwork: String? = null
-
-    private fun showOnLockScreen() {
-        if (!Settings.lockScreenArt(prefs)) {
-            lockScreenArtwork = null
-            LockScreenArt.clear(this)
-            return
-        }
-        val url = exo.currentMediaItem?.mediaMetadata?.artworkUri?.toString() ?: return
-        if (url == lockScreenArtwork) return
-        lockScreenArtwork = url
-        scope.launch { LockScreenArt.show(this@PlaybackService, url) }
     }
 
     // ----- Buttons -----

@@ -51,8 +51,11 @@ own shows, and mark all played.
 
 **Favourites**: tap ♡ next to any episode, in the player, or on the notification and lock
 screen to keep it. Favourites have their own row on Home (tap one to play it) and their own
-tab under **Library → Favourites**. Turn on **Artwork on lock screen** in Settings and the
-episode's artwork fills the lock screen while it plays.
+tab under **Library → Favourites**.
+
+**Player on the lock screen** (on by default; Settings → Playback): lock your phone with
+Podwave open and waking it shows the player with the episode's artwork full width, a heart,
+the seek bar and the controls, without unlocking. Everything else still needs unlocking.
 
 ## How it's built
 

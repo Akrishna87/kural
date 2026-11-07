@@ -61,10 +61,10 @@ fun SettingsScreen(vm: PodcastViewModel) {
                 ) { vm.setting(Settings.BUTTONS_SKIP, it) }
                 Toggle("Autoplay", Settings.autoplay(p), "When Up Next runs out, play the show's next episode") { vm.setting(Settings.AUTOPLAY, it) }
                 Toggle(
-                    "Artwork on lock screen",
-                    Settings.lockScreenArt(p),
-                    "Shows the episode's artwork full screen on your lock screen while it plays. Afterwards the lock screen uses your home screen wallpaper.",
-                ) { vm.setting(Settings.LOCK_SCREEN_ART, it) }
+                    "Player on the lock screen",
+                    Settings.lockScreenPlayer(p),
+                    "If you lock your phone with Podwave open, waking it shows the player with big artwork and a heart, without unlocking. Everything else still needs unlocking.",
+                ) { vm.setting(Settings.LOCK_SCREEN_PLAYER, it) }
             }
             item { SettingsHeader("Downloads and storage") }
             item {

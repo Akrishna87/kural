@@ -21,8 +21,8 @@ object Settings {
     /** Headphone, car and notification next/previous buttons skip time instead of changing episode. */
     const val BUTTONS_SKIP = "buttons_skip"
     const val AUTOPLAY = "autoplay"
-    /** Show the playing episode's artwork as the lock-screen wallpaper. */
-    const val LOCK_SCREEN_ART = "lock_screen_art"
+    /** With an episode loaded, show the player (big artwork, heart, controls) over the lock screen. */
+    const val LOCK_SCREEN_PLAYER = "lock_screen_player"
     const val DELETE_PLAYED = "delete_played"
     const val WIFI_ONLY = "wifi_only"
     const val REFRESH_HOURS = "refresh_hours"
@@ -46,7 +46,7 @@ object Settings {
     fun skipForwardSec(p: SharedPreferences) = p.getInt(SKIP_FORWARD, 30)
     fun buttonsSkip(p: SharedPreferences) = p.getBoolean(BUTTONS_SKIP, true)
     fun autoplay(p: SharedPreferences) = p.getBoolean(AUTOPLAY, false)
-    fun lockScreenArt(p: SharedPreferences) = p.getBoolean(LOCK_SCREEN_ART, false)
+    fun lockScreenPlayer(p: SharedPreferences) = p.getBoolean(LOCK_SCREEN_PLAYER, true)
     fun deletePlayed(p: SharedPreferences) = p.getBoolean(DELETE_PLAYED, true)
     fun wifiOnly(p: SharedPreferences) = p.getBoolean(WIFI_ONLY, true)
     fun refreshHours(p: SharedPreferences) = p.getInt(REFRESH_HOURS, 6)
