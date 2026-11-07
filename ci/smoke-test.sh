@@ -315,8 +315,36 @@ wait_for starred 'text="Episode Two Plain"' 10 "the favourite episode isn't unde
 shot 11b-starred
 echo "PASS: favourites"
 
+echo "--- Player on the lock screen"
+playing || { adb shell input keyevent KEYCODE_MEDIA_PLAY; sleep 2; }
+adb shell locksettings set-pin 1111 > /dev/null
+adb shell input keyevent KEYCODE_SLEEP
+sleep 2
+adb shell input keyevent KEYCODE_WAKEUP
+sleep 3
+dump lock
+shot 11c-lock-screen
+grep -q 'content-desc="Lock screen player"' "$OUT/lock.xml" || fail "waking the locked phone didn't show the player over the lock screen"
+grep -q 'text="Library"' "$OUT/lock.xml" && fail "the library is reachable from the lock screen"
+grep -q 'text="Episode One With Chapters"' "$OUT/lock.xml" || fail "the lock-screen player doesn't show the episode that's playing"
+tap lock "Add to Favourites"
+sleep 1
+dump lock-loved
+grep -q 'content-desc="Remove from Favourites"' "$OUT/lock-loved.xml" || fail "tapping the heart on the lock screen didn't change it"
+grep -q 'content-desc="Lock screen player"' "$OUT/lock-loved.xml" || fail "tapping the heart left the lock-screen player"
+tap lock-loved "Unlock to open Podwave"
+sleep 2
+adb shell input text 1111
+adb shell input keyevent KEYCODE_ENTER
+sleep 3
+dump unlocked
+grep -q 'text="Library"' "$OUT/unlocked.xml" || fail "unlocking didn't go back to the app"
+grep -q 'content-desc="Remove Episode One With Chapters from Favourites"' "$OUT/unlocked.xml" || fail "the heart tapped on the lock screen wasn't saved to Favourites"
+adb shell locksettings clear --old 1111 > /dev/null
+echo "PASS: the player shows over the lock screen, and only the player; its heart adds to Favourites"
+
 echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
-tap starred "Discover" last
+tap unlocked "Discover" last
 sleep 2
 dump discover3
 for _ in 1 2 3 4; do grep -q 'text="Add by feed address"' "$OUT/discover3.xml" && break; scroll_down; dump discover3; done
