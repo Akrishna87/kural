@@ -278,7 +278,7 @@ private fun CategoryTile(c: Category, modifier: Modifier, onClick: () -> Unit) {
             .padding(12.dp),
         contentAlignment = Alignment.BottomStart,
     ) {
-        Text(c.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(c.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -306,7 +306,7 @@ fun CategoryScreen(vm: PodcastViewModel, c: Category) {
                             Modifier.padding(10.dp).size(26.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("${chart.value.indexOf(p) + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("${chart.value.indexOf(p) + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

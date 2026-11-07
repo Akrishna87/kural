@@ -1,7 +1,10 @@
 package io.github.akrishna87.podcasts.ui
 
 import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -42,7 +45,15 @@ fun PodwaveApp(vm: PodcastViewModel) {
     val activity = LocalContext.current as? Activity
     val overLockScreen = Settings.lockScreenPlayer(vm.prefs()) && vm.currentId != null
     LaunchedEffect(overLockScreen) { activity?.showOverLockScreen(overLockScreen) }
-    if (overLockScreen && rememberPhoneLocked()) {
+    val locked = overLockScreen && rememberPhoneLocked()
+    // Status-bar icons: light over dark screens (and the always-dark players), dark over light ones.
+    val darkBars = Palette.isDark || locked || (vm.showPlayer && vm.currentId != null)
+    LaunchedEffect(darkBars) {
+        val style = if (darkBars) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        (activity as? ComponentActivity)?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+    }
+    if (locked) {
         LockScreenPlayer(vm)
         return
     }
@@ -167,7 +178,7 @@ private fun MiniPlayer(vm: PodcastViewModel) {
             ) {
                 Artwork(art, vm.podcastTitle(e.podcastId), Modifier.size(46.dp), RoundedCornerShape(8.dp), titleSize = 6)
                 Column(Modifier.weight(1f)) {
-                    Text(e.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+                    Text(e.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
                     Text(vm.podcastTitle(e.podcastId), color = Color.White.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp)
                 }
                 IconButton(onClick = vm::seekBack) { Icon(Icons.Rounded.Replay10, "Skip back", tint = Color.White) }

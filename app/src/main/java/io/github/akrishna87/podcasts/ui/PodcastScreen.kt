@@ -84,7 +84,7 @@ private fun ShowPage(vm: PodcastViewModel, feedUrl: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.deep(0.25f), Palette.Background)))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.wash(0.25f), Palette.Background)))) {
                 Column(Modifier.fillMaxWidth().statusBarsPadding()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
                         IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }

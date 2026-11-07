@@ -48,7 +48,8 @@ Reddit, and from what users praise in the leading apps.
 
 There are more touches throughout: artwork-tinted player and show pages, Podcasting 2.0
 **funding** links ("Support the show"), hosts and guests on episode pages, search inside your
-own shows, and mark all played.
+own shows, mark all played, and a **Dark / Light / Match phone** theme with eight accent colours
+(or your wallpaper's Material You colours on Android 12+).
 
 **Favourites**: tap ♡ next to any episode, in the player, or on the notification and lock
 screen to keep it. Favourites have their own row on Home (tap one to play it) and their own

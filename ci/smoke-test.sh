@@ -355,6 +355,36 @@ adb shell locksettings clear --old 1111 > /dev/null
 adb shell input keyevent KEYCODE_MEDIA_PLAY
 echo "PASS: the player shows over the lock screen, and only the player; its heart adds to Favourites"
 
+echo "--- Light theme (the player stays dark)"
+tap unlocked "Settings"
+wait_for theme-settings 'text="APPEARANCE"' 10 "Settings doesn't start with Appearance"
+tap theme-settings "Light"
+sleep 2
+shot 11c-light-settings
+B=$(adb exec-out screencap | python3 "$HERE/brightness.py")
+echo "background brightness in the light theme: $B"
+[ "$B" -ge 200 ] || fail "choosing Light didn't make the app light (brightness $B)"
+dump light-settings
+MINI_EP=$(grep -o 'text="Episode [^"]*"' "$OUT/light-settings.xml" | tail -1 | sed 's/^text="//; s/"$//')
+[ -n "$MINI_EP" ] || fail "the mini player isn't shown in Settings"
+tap light-settings "$MINI_EP" last # the mini player opens the full player
+sleep 2
+shot 11d-light-player
+B=$(adb exec-out screencap | python3 "$HERE/brightness.py")
+echo "full player brightness in the light theme: $B"
+[ "$B" -le 140 ] || fail "the full player isn't dark in the light theme (brightness $B)"
+adb shell input keyevent KEYCODE_BACK # close the full player
+sleep 1
+dump light-settings2
+tap light-settings2 "Dark"
+sleep 2
+B=$(adb exec-out screencap | python3 "$HERE/brightness.py")
+echo "background brightness back in the dark theme: $B"
+[ "$B" -le 60 ] || fail "choosing Dark didn't make the app dark again (brightness $B)"
+adb shell input keyevent KEYCODE_BACK # leave Settings
+sleep 1
+echo "PASS: light and dark themes"
+
 echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
 tap unlocked "Discover" last
 sleep 2

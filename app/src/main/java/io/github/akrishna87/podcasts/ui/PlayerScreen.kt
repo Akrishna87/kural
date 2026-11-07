@@ -63,162 +63,165 @@ fun PlayerScreen(vm: PodcastViewModel) {
     val forward = Settings.skipForwardSec(prefs)
     val fx = vm.effects()
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(tint.deep(0.35f), tint.deep(0.8f), Palette.Background)))
-            // Keep taps from reaching the screen underneath.
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
-    ) {
-        Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { vm.showPlayer = false }, modifier = Modifier.offset(x = (-12).dp)) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, "Close player", modifier = Modifier.size(32.dp))
-                }
-                Column(Modifier.weight(1f).clickable { vm.openPodcast(e.podcastId) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
-                    Text(show, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                StarButton(vm, e)
-                Box(Modifier.offset(x = 12.dp)) {
-                    EpisodeMenu(vm, e) { close ->
-                        MenuItem("Episode details", Icons.Rounded.Info) { close(); vm.openEpisode(e) }
-                        MenuItem("Skip to next episode", Icons.Rounded.SkipNext) { close(); vm.nextEpisode() }
+    // Dark in every theme, tinted by the artwork. (The dialogs below follow the app's theme.)
+    AlwaysDark {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(tint.deep(0.35f), tint.deep(0.8f), LocalAppColors.current.background)))
+                // Keep taps from reaching the screen underneath.
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+        ) {
+            Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { vm.showPlayer = false }, modifier = Modifier.offset(x = (-12).dp)) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, "Close player", modifier = Modifier.size(32.dp))
+                    }
+                    Column(Modifier.weight(1f).clickable { vm.openPodcast(e.podcastId) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                        Text(show, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    StarButton(vm, e)
+                    Box(Modifier.offset(x = 12.dp)) {
+                        EpisodeMenu(vm, e) { close ->
+                            MenuItem("Episode details", Icons.Rounded.Info) { close(); vm.openEpisode(e) }
+                            MenuItem("Skip to next episode", Icons.Rounded.SkipNext) { close(); vm.nextEpisode() }
+                        }
                     }
                 }
-            }
 
-            // Tabs for what fills the middle.
-            val tabs = PlayerTab.entries.filter {
-                when (it) {
-                    PlayerTab.CHAPTERS -> chapters.isNotEmpty()
-                    PlayerTab.TRANSCRIPT -> e.bestTranscript != null
-                    PlayerTab.NOTES -> e.description.isNotBlank()
-                    else -> true
-                }
-            }
-            if (tabs.size > 1) {
-                Row(Modifier.fillMaxWidth().horizontalScrollIfNeeded().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    tabs.forEach { t ->
-                        val on = t == tab
-                        Text(
-                            t.label,
-                            Modifier
-                                .clip(CircleShape)
-                                .background(if (on) Color.White.copy(alpha = 0.18f) else Color.Transparent)
-                                .clickable {
-                                    tab = t
-                                    if (t == PlayerTab.TRANSCRIPT) vm.loadTranscript(e)
-                                }
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            fontSize = 13.sp,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                            color = if (on) Color.White else Color.White.copy(alpha = 0.65f),
-                        )
+                // Tabs for what fills the middle.
+                val tabs = PlayerTab.entries.filter {
+                    when (it) {
+                        PlayerTab.CHAPTERS -> chapters.isNotEmpty()
+                        PlayerTab.TRANSCRIPT -> e.bestTranscript != null
+                        PlayerTab.NOTES -> e.description.isNotBlank()
+                        else -> true
                     }
                 }
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                when (tab) {
-                    PlayerTab.NOW -> NowPanel(vm, e, art, show, chapters.getOrNull(chapter))
-                    PlayerTab.CHAPTERS -> ChaptersPanel(vm, chapters, chapter)
-                    PlayerTab.TRANSCRIPT -> TranscriptPanel(vm, e)
-                    PlayerTab.NOTES -> NotesPanel(vm, e)
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(e.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            chapters.getOrNull(chapter)?.let { c ->
-                Text(c.title, color = Palette.Gold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-            }
-            Spacer(Modifier.height(10.dp))
-
-            val duration = vm.durationMs
-            val shown = dragging ?: if (duration > 0) (vm.positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
-            Slider(
-                value = shown,
-                onValueChange = { dragging = it },
-                onValueChangeFinished = {
-                    dragging?.let { vm.seekTo((it * duration).toLong()) }
-                    dragging = null
-                },
-                enabled = duration > 0,
-                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.22f)),
-                modifier = Modifier.semantics { contentDescription = "Position in the episode" },
-            )
-            Row(Modifier.fillMaxWidth()) {
-                val pos = if (dragging != null) (shown * duration).toLong() else vm.positionMs
-                Text(formatClock(pos), color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
-                if (duration > 0) {
-                    val left = ((duration - pos) / fx.speed).toLong()
-                    Text("-" + formatClock(left) + if (fx.speed != 1f) " at ${speedLabel(fx.speed)}" else "", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
-                }
-            }
-
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (chapters.isNotEmpty()) {
-                    IconButton(onClick = { vm.previousChapter(chapters) }) { Icon(Icons.Rounded.SkipPrevious, "Previous chapter", modifier = Modifier.size(30.dp)) }
-                } else {
-                    Spacer(Modifier.size(48.dp))
-                }
-                IconButton(onClick = vm::seekBack, modifier = Modifier.size(60.dp)) {
-                    Icon(skipBackIcon(back), "Back $back seconds", modifier = Modifier.size(38.dp))
-                }
-                Box(
-                    Modifier.size(76.dp).clip(CircleShape).background(Color.White).clickable(onClickLabel = if (vm.isPlaying) "Pause" else "Play", onClick = vm::togglePlay),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (vm.isBuffering) {
-                        CircularProgressIndicator(Modifier.size(34.dp), color = Color.Black, strokeWidth = 3.dp)
-                    } else {
-                        Icon(
-                            if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            if (vm.isPlaying) "Pause" else "Play",
-                            tint = Color.Black,
-                            modifier = Modifier.size(44.dp),
-                        )
+                if (tabs.size > 1) {
+                    Row(Modifier.fillMaxWidth().horizontalScrollIfNeeded().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        tabs.forEach { t ->
+                            val on = t == tab
+                            Text(
+                                t.label,
+                                Modifier
+                                    .clip(CircleShape)
+                                    .background(if (on) Color.White.copy(alpha = 0.18f) else Color.Transparent)
+                                    .clickable {
+                                        tab = t
+                                        if (t == PlayerTab.TRANSCRIPT) vm.loadTranscript(e)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                                fontSize = 13.sp,
+                                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                                color = if (on) Color.White else Color.White.copy(alpha = 0.65f),
+                            )
+                        }
                     }
                 }
-                IconButton(onClick = vm::seekForward, modifier = Modifier.size(60.dp)) {
-                    Icon(skipForwardIcon(forward), "Forward $forward seconds", modifier = Modifier.size(38.dp))
-                }
-                if (chapters.isNotEmpty()) {
-                    IconButton(onClick = { vm.nextChapter(chapters) }, enabled = chapter < chapters.size - 1) {
-                        Icon(Icons.Rounded.SkipNext, "Next chapter", modifier = Modifier.size(30.dp))
-                    }
-                } else {
-                    IconButton(onClick = vm::nextEpisode) { Icon(Icons.Rounded.SkipNext, "Next episode", modifier = Modifier.size(30.dp)) }
-                }
-            }
 
-            Row(
-                Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                PlayerPill(Icons.Rounded.Speed, speedLabel(fx.speed), "Playback speed", active = fx.speed != 1f) { dialog = "speed" }
-                PlayerPill(
-                    Icons.Rounded.Bedtime,
-                    when {
-                        vm.sleepEndOfEpisode -> "Episode"
-                        vm.sleepEndOfChapter -> "Chapter"
-                        vm.sleepLeftMs > 0 -> formatClock(vm.sleepLeftMs)
-                        else -> null
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    when (tab) {
+                        PlayerTab.NOW -> NowPanel(vm, e, art, show, chapters.getOrNull(chapter))
+                        PlayerTab.CHAPTERS -> ChaptersPanel(vm, chapters, chapter)
+                        PlayerTab.TRANSCRIPT -> TranscriptPanel(vm, e)
+                        PlayerTab.NOTES -> NotesPanel(vm, e)
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Text(e.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                chapters.getOrNull(chapter)?.let { c ->
+                    Text(c.title, color = LocalAppColors.current.gold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+
+                val duration = vm.durationMs
+                val shown = dragging ?: if (duration > 0) (vm.positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
+                Slider(
+                    value = shown,
+                    onValueChange = { dragging = it },
+                    onValueChangeFinished = {
+                        dragging?.let { vm.seekTo((it * duration).toLong()) }
+                        dragging = null
                     },
-                    "Sleep timer",
-                    active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
-                ) { dialog = "sleep" }
-                PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
-                PlayerPill(Icons.Rounded.ContentCut, null, "Clip this part") { dialog = "clip" }
-                PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
-                PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
-                    vm.selectSection(Section.UP_NEXT)
+                    enabled = duration > 0,
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.22f)),
+                    modifier = Modifier.semantics { contentDescription = "Position in the episode" },
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    val pos = if (dragging != null) (shown * duration).toLong() else vm.positionMs
+                    Text(formatClock(pos), color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
+                    Spacer(Modifier.weight(1f))
+                    if (duration > 0) {
+                        val left = ((duration - pos) / fx.speed).toLong()
+                        Text("-" + formatClock(left) + if (fx.speed != 1f) " at ${speedLabel(fx.speed)}" else "", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
+                    }
+                }
+
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (chapters.isNotEmpty()) {
+                        IconButton(onClick = { vm.previousChapter(chapters) }) { Icon(Icons.Rounded.SkipPrevious, "Previous chapter", modifier = Modifier.size(30.dp)) }
+                    } else {
+                        Spacer(Modifier.size(48.dp))
+                    }
+                    IconButton(onClick = vm::seekBack, modifier = Modifier.size(60.dp)) {
+                        Icon(skipBackIcon(back), "Back $back seconds", modifier = Modifier.size(38.dp))
+                    }
+                    Box(
+                        Modifier.size(76.dp).clip(CircleShape).background(Color.White).clickable(onClickLabel = if (vm.isPlaying) "Pause" else "Play", onClick = vm::togglePlay),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (vm.isBuffering) {
+                            CircularProgressIndicator(Modifier.size(34.dp), color = Color.Black, strokeWidth = 3.dp)
+                        } else {
+                            Icon(
+                                if (vm.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                if (vm.isPlaying) "Pause" else "Play",
+                                tint = Color.Black,
+                                modifier = Modifier.size(44.dp),
+                            )
+                        }
+                    }
+                    IconButton(onClick = vm::seekForward, modifier = Modifier.size(60.dp)) {
+                        Icon(skipForwardIcon(forward), "Forward $forward seconds", modifier = Modifier.size(38.dp))
+                    }
+                    if (chapters.isNotEmpty()) {
+                        IconButton(onClick = { vm.nextChapter(chapters) }, enabled = chapter < chapters.size - 1) {
+                            Icon(Icons.Rounded.SkipNext, "Next chapter", modifier = Modifier.size(30.dp))
+                        }
+                    } else {
+                        IconButton(onClick = vm::nextEpisode) { Icon(Icons.Rounded.SkipNext, "Next episode", modifier = Modifier.size(30.dp)) }
+                    }
+                }
+
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    PlayerPill(Icons.Rounded.Speed, speedLabel(fx.speed), "Playback speed", active = fx.speed != 1f) { dialog = "speed" }
+                    PlayerPill(
+                        Icons.Rounded.Bedtime,
+                        when {
+                            vm.sleepEndOfEpisode -> "Episode"
+                            vm.sleepEndOfChapter -> "Chapter"
+                            vm.sleepLeftMs > 0 -> formatClock(vm.sleepLeftMs)
+                            else -> null
+                        },
+                        "Sleep timer",
+                        active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
+                    ) { dialog = "sleep" }
+                    PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
+                    PlayerPill(Icons.Rounded.ContentCut, null, "Clip this part") { dialog = "clip" }
+                    PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
+                    PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
+                        vm.selectSection(Section.UP_NEXT)
+                    }
                 }
             }
         }
@@ -341,7 +344,7 @@ private fun TranscriptLines(vm: PodcastViewModel, t: Transcript) {
                         .padding(vertical = 6.dp, horizontal = 4.dp),
                 ) {
                     if (line.speaker != null && (i == 0 || t.lines[i - 1].speaker != line.speaker)) {
-                        Text(line.speaker, color = Palette.Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(line.speaker, color = LocalAppColors.current.gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Text(
                         line.text,
@@ -387,7 +390,7 @@ private fun PlayerPill(icon: ImageVector, label: String?, description: String, a
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = if (active) MaterialTheme.colorScheme.primary else Palette.Text)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = if (active) MaterialTheme.colorScheme.primary else LocalContentColor.current)
         if (label != null) {
             Spacer(Modifier.width(5.dp))
             Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
