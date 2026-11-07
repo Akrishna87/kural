@@ -37,6 +37,13 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
         /** Episodes kept per show beyond the feed's own, so played or saved ones don't vanish. */
         private const val MAX_HISTORY = 200
         private const val MAX_HITS = 100
+
+        /** The library's files apart from each show's episodes ("episodes/<hash>.json"). */
+        val BACKUP_FILES = listOf("podcasts.json", "states.json", "queue.json", "bookmarks.json", "filters.json", "alerts.json", "stats.json")
+        private val EPISODES_FILE = Regex("episodes/[0-9a-f]{16}\\.json")
+
+        /** Whether [name] is one of the library's files (so a backup can't write anywhere else). */
+        fun isBackupFile(name: String): Boolean = name in BACKUP_FILES || EPISODES_FILE.matches(name)
     }
 
     /** Bumped on every change the screens might show. */
@@ -62,6 +69,11 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     private val pending = HashSet<String>()
 
     init {
+        load()
+    }
+
+    /** Reads everything from [dir]. */
+    private fun load() {
         dir.mkdirs()
         File(dir, "episodes").mkdirs()
         readArray("podcasts.json")?.objects()?.forEach { o ->
@@ -114,6 +126,10 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
             pending.remove(name)
             snapshot(name)
         } ?: return
+        writeFile(name, text)
+    }
+
+    private fun writeFile(name: String, text: String) {
         val f = File(dir, name)
         f.parentFile?.mkdirs()
         val tmp = File(f.path + ".tmp")
@@ -151,6 +167,63 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     fun flush() {
         val names = synchronized(this) { pending.toList() }
         names.forEach { write(it) }
+    }
+
+    // ----- Backup and restore -----
+
+    /** Runs [task] on the writer thread (after the writes already waiting), or here without one. */
+    private fun onWriter(task: () -> Unit) {
+        val w = writer
+        if (w == null) task() else w.submit(Runnable { task() }).get()
+    }
+
+    /**
+     * Every saved file, as name → text (e.g. "podcasts.json", "episodes/1a2b3c4d5e6f7a8b.json"),
+     * for a backup. Writes what's waiting first. Slow with big shows: call off the main thread.
+     */
+    fun exportFiles(): Map<String, String> {
+        onWriter { flush() }
+        val names = synchronized(this) { BACKUP_FILES + podcasts.keys.map { episodesFile(it) } }
+        val out = LinkedHashMap<String, String>()
+        for (name in names) readText(name)?.let { out[name] = it }
+        return out
+    }
+
+    /**
+     * Replaces everything with [files] (from [exportFiles], e.g. on another phone) and reads it
+     * again; files with other names are ignored. Downloads aren't in a backup: an episode stays
+     * downloaded only if [keepDownload] says its audio is still on this phone.
+     */
+    fun importFiles(files: Map<String, String>, keepDownload: (episodeId: String) -> Boolean = { false }) {
+        onWriter {
+            synchronized(this) {
+                pending.clear()
+                BACKUP_FILES.forEach { File(dir, it).delete() }
+                File(dir, "episodes").listFiles()?.forEach { it.delete() }
+                for ((name, text) in files) if (isBackupFile(name)) writeFile(name, text)
+                podcasts.clear()
+                episodeLists.clear()
+                episodeIndex.clear()
+                states.clear()
+                queue.clear()
+                bookmarks.clear()
+                filters.clear()
+                alerts.clear()
+                hits.clear()
+                stats = Stats(since = System.currentTimeMillis())
+                playRequested = false
+                load()
+                var fixed = false
+                for (s in states.values.toList()) {
+                    if (s.downloadId != 0L || (s.downloaded && !keepDownload(s.episodeId))) {
+                        states[s.episodeId] = s.copy(downloadId = 0, downloaded = s.downloaded && keepDownload(s.episodeId))
+                        fixed = true
+                    }
+                }
+                if (fixed) snapshot("states.json")?.let { writeFile("states.json", it) }
+                changed(queueToo = true)
+            }
+        }
     }
 
     private fun changed(queueToo: Boolean = false) {

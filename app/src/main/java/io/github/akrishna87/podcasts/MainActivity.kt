@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) vm.handleIntent(intent)
         ThemeSettings.load(this)
+        Backups.start(this)
         setContent {
             PodwaveTheme(ThemeSettings.mode, ThemeSettings.wallpaperColors, ThemeSettings.accent) {
                 PodwaveApp(vm)

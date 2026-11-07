@@ -63,6 +63,13 @@ the seek bar and the controls, without unlocking. Everything else still needs un
 **Home-screen widget**: the episode's artwork, title and show with skip back, play/pause and
 skip forward (your skip lengths), working even with the app closed; tap it to open Podwave.
 
+**Backup and restore** (Settings → Backup and restore): Podwave keeps a copy of your shows,
+Up Next, history, favourites, bookmarks, filters, alerts, stats and settings in the
+**Download/Podwave** folder, updated as you go, with no internet or account (turn it off there,
+or tap **Back up now**). On a new phone, copy that folder over, install Podwave and tap
+**Restore from backup**: it replaces what's there with the backup. Downloaded episodes aren't
+included. To move to another app instead, use the OPML export.
+
 ## How it's built
 
 It uses Kotlin and Jetpack Compose, with Media3 (ExoPlayer) for audio, WorkManager for the
