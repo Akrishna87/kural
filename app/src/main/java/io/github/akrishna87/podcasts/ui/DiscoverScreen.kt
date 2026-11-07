@@ -1,5 +1,9 @@
 package io.github.akrishna87.podcasts.ui
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -45,6 +49,25 @@ fun DiscoverScreen(vm: PodcastViewModel) {
     val focus = LocalFocusManager.current
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importOpml) }
     var addByUrl by remember { mutableStateOf(false) }
+    // Voice search: the phone's own speech recogniser turns what you say into the search.
+    val listener = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val heard = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
+        if (result.resultCode == Activity.RESULT_OK && !heard.isNullOrEmpty()) {
+            vm.query = heard
+            focus.clearFocus()
+            vm.search()
+        }
+    }
+    fun listen() {
+        val ask = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a show, person or topic")
+        try {
+            listener.launch(ask)
+        } catch (e: ActivityNotFoundException) {
+            vm.say("Voice search isn't available on this phone")
+        }
+    }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
         item {
@@ -61,6 +84,7 @@ fun DiscoverScreen(vm: PodcastViewModel) {
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = {
                     if (vm.query.isNotEmpty()) IconButton(onClick = vm::clearSearch) { Icon(Icons.Rounded.Close, "Clear search") }
+                    else IconButton(onClick = ::listen) { Icon(Icons.Rounded.Mic, "Search by voice") }
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(28.dp),

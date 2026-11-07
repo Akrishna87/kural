@@ -40,6 +40,7 @@ Reddit, and from what users praise in the leading apps.
 | A smarter sleep timer | Minutes, **end of episode** or **end of chapter**. The sound fades out at the end. Press play within 5 minutes of it stopping and the same timer starts again. |
 | Android Auto | Browse Up Next, New episodes, In progress, Downloads and Shows from the car, and ask for a show by voice. |
 | Headphone buttons that make sense for talk | Next/previous on headphones and in the car **skip forward/back** (or change episode if you prefer). The notification and lock screen show skip-back/skip-forward buttons using your skip lengths. |
+| Voice search | Tap 🎤 in Discover's search box and say a show, person or topic. It uses the phone's own speech recogniser, so there's no extra permission. |
 | Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Podwave" also work. |
 | Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (starred and bookmarked ones are kept). |
 | Stats (Pocket Casts) | Time listened, **time saved** by speed, trimmed silences and skipped intros, episodes finished, and your most-listened shows. |

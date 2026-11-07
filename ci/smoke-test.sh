@@ -148,6 +148,8 @@ echo "PASS: Home"
 echo "--- Discover: Apple's top chart and search"
 tap home "Discover" last
 wait_for discover 'text="Top shows"' 20 "Discover doesn't show 'Top shows'"
+grep -q 'content-desc="Search by voice"' "$OUT/discover.xml" || fail "Discover has no voice search button"
+echo "PASS: voice search button"
 sleep 8
 dump discover
 shot 2-discover
