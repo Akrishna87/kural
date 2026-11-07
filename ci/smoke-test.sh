@@ -235,6 +235,32 @@ dump player-fast
 grep -q 'text="1.5×"' "$OUT/player-fast.xml" || fail "the speed didn't change to 1.5×"
 echo "PASS: playback speed"
 
+echo "--- Equaliser (from the player's sound options)"
+tap player-fast "Trim silence and volume boost" last
+wait_for sound 'text="Equaliser"' 10 "the sound options have no Equaliser entry"
+tap sound "Equaliser" last
+wait_for eq 'content-desc="Equaliser on/off"' 10 "the equaliser screen didn't open"
+shot 8a-equaliser
+if grep -q "Hz" "$OUT/eq.xml"; then
+  tap eq "Equaliser on/off"
+  sleep 1
+  tap eq "Equaliser bands" # the middle of the curve: sets a band
+  sleep 1
+  dump eq-on
+  grep -q 'checked="true"' "$OUT/eq-on.xml" || fail "the equaliser didn't turn on"
+  shot 8a-equaliser-on
+  echo "PASS: the equaliser opens and can be adjusted"
+elif grep -q "doesn" "$OUT/eq.xml"; then
+  echo "PASS: the equaliser opens (this emulator has no equaliser effect, and the screen says so)"
+else
+  show eq
+  fail "the equaliser screen shows neither bands nor an explanation"
+fi
+adb shell input keyevent KEYCODE_BACK # back to the player
+wait_for player-fast 'text="NOW PLAYING"' 10 "Back from the equaliser didn't return to the player"
+sleep 1
+dump player-fast
+
 echo "--- Clips: save one to the phone, share another"
 tap player-fast "Clip this part"
 wait_for clip 'text="Save to phone"' 10 "the clip editor didn't open"

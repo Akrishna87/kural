@@ -214,7 +214,7 @@ fun PlayerScreen(vm: PodcastViewModel) {
                     "Sleep timer",
                     active = vm.sleepEndOfEpisode || vm.sleepEndOfChapter || vm.sleepLeftMs > 0,
                 ) { dialog = "sleep" }
-                PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0) { dialog = "effects" }
+                PlayerPill(Icons.Rounded.GraphicEq, null, "Trim silence and volume boost", active = fx.trimSilence || fx.boostLevel > 0 || vm.equaliser.choice.enabled) { dialog = "effects" }
                 PlayerPill(Icons.Rounded.ContentCut, null, "Clip this part") { dialog = "clip" }
                 PlayerPill(Icons.Rounded.BookmarkAdd, null, "Bookmark this moment") { dialog = "bookmark" }
                 PlayerPill(Icons.Rounded.QueueMusic, (vm.snap.queue.size - 1).takeIf { it > 0 }?.toString(), "Up Next") {
@@ -487,6 +487,10 @@ private fun EffectsDialog(vm: PodcastViewModel, show: String, onDismiss: () -> U
             Column {
                 Toggle("Trim silence", fx.trimSilence, "Shortens pauses, so episodes finish sooner") { vm.setTrimSilence(it) }
                 BoostPicker(fx.boostLevel, vm::setBoost)
+                SettingRow("Equaliser", if (vm.equaliser.choice.enabled) "On" else "Off", "Presets and bass boost, for every show") {
+                    onDismiss()
+                    vm.open(Screen.EqualiserPage(fromPlayer = true))
+                }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Toggle("Only for “$show”", custom, "Keep this show's speed and sound separate from the rest") { vm.setCustomEffects(it) }
             }

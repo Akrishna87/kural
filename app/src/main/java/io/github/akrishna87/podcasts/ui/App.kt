@@ -72,6 +72,7 @@ fun PodwaveApp(vm: PodcastViewModel) {
                     Screen.Alerts -> AlertsScreen(vm)
                     Screen.SettingsPage -> SettingsScreen(vm)
                     Screen.StatsPage -> StatsScreen(vm)
+                    is Screen.EqualiserPage -> EqualiserScreen(vm, screen)
                     null -> when (section) {
                         Section.HOME -> HomeScreen(vm)
                         Section.UP_NEXT -> UpNextScreen(vm)
