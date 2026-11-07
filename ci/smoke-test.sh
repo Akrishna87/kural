@@ -59,7 +59,8 @@ scroll_down() { adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H 
 
 # ----- A test show served from this machine (the emulator sees it as 10.0.2.2) -----
 FEED_DIR="$(mktemp -d)"
-ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=240" -f lavfi -i "anoisesrc=d=240:a=0.02" \
+# Episode one lasts 10 minutes so it's still playing (at 1.5x, from 1:30) when the lock-screen step checks it.
+ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=600" -f lavfi -i "anoisesrc=d=600:a=0.02" \
   -filter_complex "[0][1]amix=inputs=2,volume=2" -ac 1 -ar 22050 -b:a 48k "$FEED_DIR/ep1.mp3"
 ffmpeg -loglevel error -f lavfi -i "sine=frequency=660:duration=120" -ac 1 -ar 22050 -b:a 48k "$FEED_DIR/ep2.mp3"
 cat > "$FEED_DIR/ep1.vtt" <<'VTT'
@@ -86,8 +87,8 @@ cat > "$FEED_DIR/feed.xml" <<XML
       <title>Episode One With Chapters</title>
       <guid>ep-1</guid>
       <pubDate>$NOW_RFC</pubDate>
-      <enclosure url="http://10.0.2.2:8000/ep1.mp3" length="1440000" type="audio/mpeg"/>
-      <itunes:duration>4:00</itunes:duration>
+      <enclosure url="http://10.0.2.2:8000/ep1.mp3" length="3600000" type="audio/mpeg"/>
+      <itunes:duration>10:00</itunes:duration>
       <description><![CDATA[<p>Topics:</p><ul><li>0:00 Hello there</li><li>1:30 The middle part</li></ul>]]></description>
       <psc:chapters version="1.2">
         <psc:chapter start="00:00:00" title="Hello there"/>
