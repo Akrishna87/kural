@@ -476,6 +476,38 @@ else
 fi
 echo "PASS: Home lists your shows and their latest episodes"
 
+echo "--- Your recap (from the Library, then Home)"
+# Episode one has been playing for minutes by now, so the recap has listening time and the show.
+dump before-recap
+tap before-recap "Library" last
+wait_for recap-library 'content-desc="Your recap"' 15 "the Library has no recap button"
+tap recap-library "Your recap"
+wait_for recap 'text="of listening"' 15 "the recap didn't open"
+sleep 6 # the play log is read again every few seconds
+dump recap
+shot 16-recap
+grep -Eq 'text="([1-9][0-9]* h [0-9]+ min|[1-9][0-9]* min)"' "$OUT/recap.xml" || { show recap; fail "the recap shows no listening time this month"; }
+grep -q 'text="Top shows"' "$OUT/recap.xml" || { show recap; fail "the recap has no top shows after listening"; }
+grep -q 'text="Podwave Test Show"' "$OUT/recap.xml" || { show recap; fail "the test show isn't in the recap"; }
+tap recap "All time"
+sleep 2
+dump recap-all
+grep -q 'text="Podwave Test Show"' "$OUT/recap-all.xml" || fail "All time doesn't include this month's listening"
+echo "PASS: the recap shows listening time and the test show"
+adb shell input keyevent KEYCODE_BACK
+sleep 1
+dump recap-back
+tap recap-back "Home" last
+sleep 2
+for _ in 1 2 3 4 5 6 7 8; do adb shell input swipe $((W / 2)) $((H / 3)) $((W / 2)) $((H * 3 / 4)) 150; done # back to the top
+sleep 1
+dump recap-home
+for _ in 1 2 3 4 5 6 7 8; do grep -q 'text="See your recap ›"' "$OUT/recap-home.xml" && break; scroll_down; dump recap-home; done
+grep -q 'text="See your recap ›"' "$OUT/recap-home.xml" || fail "Home has no recap card after listening"
+shot 17-home-recap
+grep -q "so far" "$OUT/recap-home.xml" || fail "Home's recap card doesn't show this month"
+echo "PASS: Home shows this month's recap"
+
 echo "--- Home-screen widget"
 adb shell dumpsys appwidget > "$OUT/appwidget.txt"
 grep -q "podcasts.PlayerWidget" "$OUT/appwidget.txt" || fail "the home-screen widget isn't registered with the launcher"

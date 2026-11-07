@@ -45,7 +45,7 @@ Reddit, and from what users praise in the leading apps.
 | Voice search | Tap 🎤 in Discover's search box and say a show, person or topic. It uses the phone's own speech recogniser, so there's no extra permission. |
 | Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Podwave" also work. |
 | Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (favourites and bookmarked ones are kept). |
-| Stats (Pocket Casts) | Time listened, **time saved** by speed, trimmed silences and skipped intros, episodes finished, and your most-listened shows. |
+| Your recap (Pocket Casts' stats, Spotify Wrapped) | How much you listened **this month, last month, this year or ever**; your top shows and episodes; episodes finished; **time saved** by speed, trimmed silences and skipped intros; the days and time of day you listen most; and a button to play the latest from your top show. Every minute played counts, including with the app closed. On Home and in the Library; kept on the phone with your library. |
 
 There are more touches throughout: artwork-tinted player and show pages, Podcasting 2.0
 **funding** links ("Support the show"), hosts and guests on episode pages, search inside your

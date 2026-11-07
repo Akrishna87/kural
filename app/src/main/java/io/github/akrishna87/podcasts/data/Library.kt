@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.time.ZonedDateTime
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -37,6 +38,7 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
         /** Episodes kept per show beyond the feed's own, so played or saved ones don't vanish. */
         private const val MAX_HISTORY = 200
         private const val MAX_HITS = 100
+        private const val PLAYS = "plays.json"
     }
 
     /** Bumped on every change the screens might show. */
@@ -57,6 +59,8 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     private val alerts = ArrayList<Alert>()
     private val hits = ArrayList<AlertHit>()
     private var stats = Stats(since = System.currentTimeMillis())
+    /** The dated play log behind the recap: one entry per episode per day, oldest first. */
+    private val plays = LinkedHashMap<String, PlayDay>()
     private var playRequested = false
 
     private val pending = HashSet<String>()
@@ -78,6 +82,7 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
             o.optJSONArray("hits").objects().forEach { h -> runCatching { AlertHit.fromJson(h) }.getOrNull()?.let { hits += it } }
         }
         readObject("stats.json")?.let { stats = Stats.fromJson(it) }
+        readArray(PLAYS)?.objects()?.forEach { o -> runCatching { PlayDay.fromJson(o) }.getOrNull()?.let { plays[it.key] = it } }
         if (filters.isEmpty() && !File(dir, "filters.json").exists()) {
             filters += EpisodeFilter("new-this-week", "New this week", maxAgeDays = 7)
             filters += EpisodeFilter("short", "Under 30 minutes", maxMinutes = 30)
@@ -100,13 +105,13 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     private fun episodesFile(podcastId: String) = "episodes/${shortHash(podcastId)}.json"
 
     /** Writes [name] soon; several changes in a row are saved once. */
-    private fun dirty(name: String) {
+    private fun dirty(name: String, delayMs: Long = 400) {
         val w = writer
         if (w == null) {
             write(name)
             return
         }
-        if (pending.add(name)) w.schedule({ write(name) }, 400, TimeUnit.MILLISECONDS)
+        if (pending.add(name)) w.schedule({ write(name) }, delayMs, TimeUnit.MILLISECONDS)
     }
 
     private fun write(name: String) {
@@ -139,6 +144,7 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
             .put("hits", JSONArray().also { a -> hits.forEach { a.put(it.toJson()) } })
             .toString()
         name == "stats.json" -> stats.toJson().toString()
+        name == PLAYS -> JSONArray().also { a -> plays.values.forEach { a.put(it.toJson()) } }.toString()
         name.startsWith("episodes/") -> {
             val id = podcasts.keys.firstOrNull { episodesFile(it) == name }
             val list = id?.let { episodeLists[it] }
@@ -519,6 +525,7 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
             states[id]?.let { states[id] = it.copy(played = true, positionMs = 0, isNew = false) }
             stats = stats.copy(finished = stats.finished + 1)
             dirty("stats.json")
+            states[id]?.let { logPlay(it.podcastId, id) { d -> d.copy(finished = true) } }
             dirty("states.json")
         }
         dirty("queue.json")
@@ -673,10 +680,20 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     @Synchronized
     fun stats(): Stats = stats
 
-    /** [wallMs] of listening that moved through [audioMs] of the episode. */
+    /** [wallMs] of listening to [episodeId] that moved through [audioMs] of the episode, ending [at]. */
     @Synchronized
-    fun addListening(podcastId: String, wallMs: Long, audioMs: Long) {
+    fun addListening(podcastId: String, wallMs: Long, audioMs: Long, episodeId: String? = null, at: ZonedDateTime = ZonedDateTime.now()) {
         if (wallMs <= 0) return
+        if (episodeId != null) {
+            val part = PartOfDay.of(at.hour).ordinal
+            logPlay(podcastId, episodeId, at) { d ->
+                d.copy(
+                    ms = d.ms + wallMs,
+                    savedMs = d.savedMs + (audioMs - wallMs).coerceAtLeast(0),
+                    parts = d.parts.mapIndexed { i, v -> if (i == part) v + wallMs else v },
+                )
+            }
+        }
         val by = HashMap(stats.byPodcast)
         by[podcastId] = (by[podcastId] ?: 0L) + wallMs
         stats = stats.copy(
@@ -688,16 +705,40 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
     }
 
     @Synchronized
-    fun addSkipped(ms: Long) {
+    fun addSkipped(ms: Long, episodeId: String? = null, at: ZonedDateTime = ZonedDateTime.now()) {
         if (ms <= 0) return
         stats = stats.copy(skippedMs = stats.skippedMs + ms)
         dirty("stats.json")
+        val podcastId = episodeId?.let { states[it]?.podcastId ?: episodeIndex[it]?.podcastId }
+        if (episodeId != null && podcastId != null) logPlay(podcastId, episodeId, at) { d -> d.copy(skippedMs = d.skippedMs + ms) }
+    }
+
+    /** The play log behind the recap, oldest day first. */
+    @Synchronized
+    fun playLog(): List<PlayDay> = plays.values.toList()
+
+    /** Changes today's entry for [episodeId] in the play log, starting one if needed. */
+    private fun logPlay(podcastId: String, episodeId: String, at: ZonedDateTime = ZonedDateTime.now(), change: (PlayDay) -> PlayDay) {
+        val day = at.toLocalDate()
+        val key = PlayDay.keyOf(day, episodeId)
+        val before = plays[key] ?: PlayDay(
+            day = day,
+            podcastId = podcastId,
+            episodeId = episodeId,
+            podcastTitle = podcasts[podcastId]?.podcast?.title.orEmpty(),
+            episodeTitle = episodeIndex[episodeId]?.title ?: episode(episodeId)?.title.orEmpty(),
+        )
+        plays[key] = change(before)
+        // Saved less often than the rest: it's written every half second while playing.
+        dirty(PLAYS, delayMs = 10_000)
     }
 
     @Synchronized
     fun resetStats() {
         stats = Stats(since = System.currentTimeMillis())
+        plays.clear()
         dirty("stats.json")
+        dirty(PLAYS)
         changed()
     }
 
