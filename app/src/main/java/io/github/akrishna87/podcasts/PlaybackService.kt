@@ -299,7 +299,7 @@ class PlaybackService : MediaLibraryService() {
         if (s?.played == true || (duration > 0 && pos > duration - 5_000)) pos = 0
         val intro = (e?.let { lib.entry(it.podcastId)?.settings?.skipIntroSec } ?: 0) * 1000L
         if (intro > 0 && pos < intro && (duration == 0L || intro < duration / 2)) {
-            lib.addSkipped(intro - pos)
+            lib.addSkipped(intro - pos, id)
             pos = intro
         }
         return pos
@@ -370,7 +370,7 @@ class PlaybackService : MediaLibraryService() {
             val wall = now - lastTickAt
             val heard = pos - lastTickPos
             if (wall in 1..5_000 && heard in 0..(wall * 5)) {
-                lib.state(item.mediaId)?.podcastId?.let { lib.addListening(it, wall, heard) }
+                lib.state(item.mediaId)?.podcastId?.let { lib.addListening(it, wall, heard, item.mediaId) }
             }
         }
         lastTickAt = now
@@ -383,7 +383,7 @@ class PlaybackService : MediaLibraryService() {
         val podcastId = lib.state(item.mediaId)?.podcastId
         val outro = (podcastId?.let { lib.entry(it)?.settings?.skipOutroSec } ?: 0) * 1000L
         if (playing && outro > 0 && duration > outro * 2 && pos >= duration - outro) {
-            lib.addSkipped(duration - pos)
+            lib.addSkipped(duration - pos, item.mediaId)
             finishCurrent(completed = true)
             return
         }

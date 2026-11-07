@@ -38,7 +38,7 @@ import io.github.akrishna87.podcasts.feed.formatClock
 fun LibraryScreen(vm: PodcastViewModel) {
     Column(Modifier.fillMaxSize()) {
         TopBar("Library", onBack = null) {
-            IconButton(onClick = { vm.open(Screen.StatsPage) }) { Icon(Icons.Rounded.Insights, "Listening stats") }
+            IconButton(onClick = { vm.open(Screen.StatsPage) }) { Icon(Icons.Rounded.Insights, "Your recap") }
             IconButton(onClick = { vm.open(Screen.SettingsPage) }) { Icon(Icons.Rounded.Settings, "Settings") }
         }
         ChipRow(LibraryTab.entries, vm.libraryTab, { it.label }, { vm.libraryTab = it })

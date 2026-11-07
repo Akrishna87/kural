@@ -149,6 +149,8 @@ fun HomeScreen(vm: PodcastViewModel) {
                 }
             }
 
+            item(key = "recap") { HomeRecapCard(vm, onClick = { vm.open(Screen.StatsPage) }) }
+
             if (snap.hits.isNotEmpty()) {
                 item { SectionTitle("Mentions you're following", action = "See all") { vm.open(Screen.Alerts) } }
                 items(snap.hits.take(3), key = { "h" + it.episode.id }) { hit ->

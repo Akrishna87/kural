@@ -87,7 +87,7 @@ fun SettingsScreen(vm: PodcastViewModel) {
             item {
                 SettingRow("Import from another app", "OPML", "Pocket Casts, Overcast, Apple Podcasts, AntennaPod and others can export one") { importer.launch(arrayOf("*/*")) }
                 SettingRow("Export your shows", "OPML", "To move to another app or keep a backup") { exporter.launch("podwave-shows.opml") }
-                SettingRow("Listening stats", "") { vm.open(Screen.StatsPage) }
+                SettingRow("Your recap", "") { vm.open(Screen.StatsPage) }
             }
             item { SettingsHeader("App updates") }
             item { UpdateCard() }
@@ -205,73 +205,3 @@ fun AlertsScreen(vm: PodcastViewModel) {
 @Composable
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
     this.then(Modifier.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onClick))
-
-/** How much you've listened, and how much time speed and trimmed silences saved. */
-@Composable
-fun StatsScreen(vm: PodcastViewModel) {
-    val stats = vm.stats()
-    var confirm by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize()) {
-        TopBar("Listening stats", onBack = { vm.back() }) { TextButton(onClick = { confirm = true }) { Text("Reset") } }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = LocalBottomSpace.current)) {
-            item {
-                Text(
-                    "Since " + SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(stats.since)),
-                    color = Palette.SubText,
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatTile("Listened", hours(stats.listenedMs), Palette.Violet, Modifier.weight(1f))
-                    StatTile("Time saved", hours(stats.savedMs + stats.skippedMs), Palette.Green, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatTile("Episodes finished", "${stats.finished}", Palette.Coral, Modifier.weight(1f))
-                    StatTile("Intros & outros skipped", hours(stats.skippedMs), Palette.Gold, Modifier.weight(1f))
-                }
-                Text(
-                    "Time saved counts speed-ups, trimmed silences and skipped intros and outros.",
-                    color = Palette.Faint,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
-                SettingsHeader("Most listened")
-            }
-            val top = stats.byPodcast.entries.sortedByDescending { it.value }.take(10)
-            val max = top.firstOrNull()?.value?.coerceAtLeast(1) ?: 1
-            items(top, key = { it.key }) { (id, ms) ->
-                val title = vm.podcastTitle(id).ifBlank { "A show you no longer follow" }
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Artwork(vm.entry(id)?.podcast?.artworkUrl, title, Modifier.size(40.dp), RoundedCornerShape(6.dp), titleSize = 6)
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                        ProgressLine(ms.toFloat() / max, Modifier.fillMaxWidth().padding(top = 4.dp))
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Text(hours(ms), color = Palette.SubText, fontSize = 13.sp)
-                }
-            }
-            if (top.isEmpty()) item { Text("Play something and your stats start here.", color = Palette.SubText, modifier = Modifier.padding(vertical = 8.dp)) }
-        }
-    }
-    if (confirm) {
-        AlertDialog(
-            onDismissRequest = { confirm = false },
-            title = { Text("Reset your stats?") },
-            text = { Text("Your listening totals start again from today.") },
-            confirmButton = { TextButton(onClick = { vm.resetStats(); confirm = false }) { Text("Reset") } },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
-        )
-    }
-}
-
-private fun hours(ms: Long): String = if (ms < 60_000) "0 min" else formatDuration(ms / 1000)
-
-@Composable
-private fun StatTile(label: String, value: String, color: Color, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.14f)).padding(14.dp)) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = color)
-        Text(label, color = Palette.SubText, fontSize = 13.sp)
-    }
-}
