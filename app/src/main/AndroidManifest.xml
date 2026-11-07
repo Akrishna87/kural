@@ -89,6 +89,21 @@
                 android:resource="@xml/clip_paths" />
         </provider>
 
+        <!-- Home-screen widget and its buttons (PlayerWidget.kt). -->
+        <receiver
+            android:name=".PlayerWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/player_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".WidgetActionReceiver"
+            android:exported="false" />
+
         <!-- Android Auto: browse Up Next, new episodes, downloads and your shows from the car. -->
         <meta-data
             android:name="com.google.android.gms.car.application"

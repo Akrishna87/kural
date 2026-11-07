@@ -404,6 +404,11 @@ else
 fi
 echo "PASS: Home lists your shows and their latest episodes"
 
+echo "--- Home-screen widget"
+adb shell dumpsys appwidget > "$OUT/appwidget.txt"
+grep -q "podcasts.PlayerWidget" "$OUT/appwidget.txt" || fail "the home-screen widget isn't registered with the launcher"
+echo "PASS: home-screen widget is available"
+
 if adb logcat -d | grep -q "FATAL EXCEPTION"; then
   adb logcat -d > "$OUT/logcat.txt"
   fail "the app crashed (see logcat.txt)"
