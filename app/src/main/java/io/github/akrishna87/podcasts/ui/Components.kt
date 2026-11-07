@@ -221,15 +221,15 @@ private fun StatusIcon(icon: ImageVector, tint: Color, description: String) {
     Spacer(Modifier.width(5.dp))
 }
 
-/** One tap to star an episode, or take its star away. Starred episodes are listed under Library → Starred. */
+/** One tap to add an episode to Favourites, or take it out. Favourites are listed under Library → Favourites and on Home. */
 @Composable
 fun StarButton(vm: PodcastViewModel, e: Episode) {
     val starred = vm.state(e.id)?.starred == true
     IconButton(onClick = { vm.toggleStar(e) }, modifier = Modifier.size(36.dp)) {
         Icon(
-            if (starred) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-            if (starred) "Remove star from ${e.title}" else "Star ${e.title}",
-            tint = if (starred) Palette.Gold else Palette.Faint,
+            if (starred) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            if (starred) "Remove ${e.title} from Favourites" else "Add ${e.title} to Favourites",
+            tint = if (starred) Palette.Heart else Palette.Faint,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -287,8 +287,8 @@ fun EpisodeMenu(
             }
             if (s?.played == true) MenuItem("Mark as unplayed", Icons.Rounded.RemoveDone) { vm.markPlayed(e, false); close() }
             else MenuItem("Mark as played", Icons.Rounded.DoneAll) { vm.markPlayed(e, true); close() }
-            if (s?.starred == true) MenuItem("Remove star", Icons.Rounded.StarOutline) { vm.toggleStar(e); close() }
-            else MenuItem("Star", Icons.Rounded.Star) { vm.toggleStar(e); close() }
+            if (s?.starred == true) MenuItem("Remove from Favourites", Icons.Rounded.FavoriteBorder) { vm.toggleStar(e); close() }
+            else MenuItem("Add to Favourites", Icons.Rounded.Favorite) { vm.toggleStar(e); close() }
             if (s?.isNew == true) MenuItem("Dismiss from New", Icons.Rounded.Archive) { vm.dismissNew(listOf(e.id)); close() }
             MenuItem("Share", Icons.Rounded.Share) { context.startActivity(vm.shareIntent(e)); close() }
             if (showShow) MenuItem("Go to show", Icons.Rounded.Podcasts) { vm.openPodcast(e.podcastId); close() }

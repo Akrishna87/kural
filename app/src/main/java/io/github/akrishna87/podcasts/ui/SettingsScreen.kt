@@ -60,11 +60,16 @@ fun SettingsScreen(vm: PodcastViewModel) {
                     "Next/previous on headphones and in the car skip forward/back instead of changing episode",
                 ) { vm.setting(Settings.BUTTONS_SKIP, it) }
                 Toggle("Autoplay", Settings.autoplay(p), "When Up Next runs out, play the show's next episode") { vm.setting(Settings.AUTOPLAY, it) }
+                Toggle(
+                    "Artwork on lock screen",
+                    Settings.lockScreenArt(p),
+                    "Shows the episode's artwork full screen on your lock screen while it plays. Afterwards the lock screen uses your home screen wallpaper.",
+                ) { vm.setting(Settings.LOCK_SCREEN_ART, it) }
             }
             item { SettingsHeader("Downloads and storage") }
             item {
                 Toggle("Download on Wi-Fi only", Settings.wifiOnly(p), "Saves your mobile data") { vm.setting(Settings.WIFI_ONLY, it) }
-                Toggle("Delete played episodes", Settings.deletePlayed(p), "Frees space once you've finished an episode (starred and bookmarked ones are kept)") {
+                Toggle("Delete played episodes", Settings.deletePlayed(p), "Frees space once you've finished an episode (favourites and bookmarked ones are kept)") {
                     vm.setting(Settings.DELETE_PLAYED, it)
                 }
                 SettingRow("Downloaded episodes", formatBytes(vm.bytesUsed)) { vm.libraryTab = io.github.akrishna87.podcasts.LibraryTab.DOWNLOADS; vm.selectSection(io.github.akrishna87.podcasts.Section.LIBRARY) }

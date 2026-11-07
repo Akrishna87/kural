@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Only if you turn on "Artwork on lock screen": the episode's artwork as the lock-screen wallpaper. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
     <!-- "New episode" and topic alerts, only for the shows and topics you turn them on for. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

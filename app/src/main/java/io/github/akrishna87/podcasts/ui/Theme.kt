@@ -24,6 +24,8 @@ object Palette {
     val Violet = Color(0xFFA78BFA)
     val Coral = Color(0xFFFF7A6B)
     val Gold = Color(0xFFFFD27A)
+    /** Favourites: the pink of the app icon's wave. */
+    val Heart = Color(0xFFFF4D8D)
     val Green = Color(0xFF5AD19A)
 }
 

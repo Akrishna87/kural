@@ -65,7 +65,12 @@ class PlaybackService : MediaLibraryService() {
         /** The notification's skip buttons, as commands the system media controls can show. */
         private const val CMD_BACK = "io.github.akrishna87.podcasts.SKIP_BACK"
         private const val CMD_FORWARD = "io.github.akrishna87.podcasts.SKIP_FORWARD"
-        private val SKIP_COMMANDS = listOf(SessionCommand(CMD_BACK, Bundle.EMPTY), SessionCommand(CMD_FORWARD, Bundle.EMPTY))
+        private const val CMD_FAVOURITE = "io.github.akrishna87.podcasts.FAVOURITE"
+        private val SKIP_COMMANDS = listOf(
+            SessionCommand(CMD_BACK, Bundle.EMPTY),
+            SessionCommand(CMD_FORWARD, Bundle.EMPTY),
+            SessionCommand(CMD_FAVOURITE, Bundle.EMPTY),
+        )
     }
 
     private lateinit var lib: Library
@@ -88,6 +93,7 @@ class PlaybackService : MediaLibraryService() {
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             Settings.SKIP_BACK, Settings.SKIP_FORWARD -> session?.setCustomLayout(skipButtons())
+            Settings.LOCK_SCREEN_ART -> showOnLockScreen()
             else -> applyEffects()
         }
     }
@@ -133,6 +139,7 @@ class PlaybackService : MediaLibraryService() {
                 savePosition(notify = true)
                 lastTickPos = -1
                 if (isPlaying) maybeRestartSleepTimer()
+                if (isPlaying) showOnLockScreen()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -144,6 +151,8 @@ class PlaybackService : MediaLibraryService() {
                     finished(previous)
                 }
                 applyEffects()
+                refreshHeart()
+                if (exo.isPlaying) showOnLockScreen()
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -178,7 +187,12 @@ class PlaybackService : MediaLibraryService() {
 
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         scope.launch { lib.queueVersion.collect { syncQueue() } }
-        scope.launch { lib.version.collect { applyEffects() } }
+        scope.launch {
+            lib.version.collect {
+                applyEffects()
+                refreshHeart()
+            }
+        }
         scope.launch {
             while (isActive) {
                 delay(500)
@@ -195,6 +209,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        LockScreenArt.clear(this)
         savePosition(notify = false)
         lib.flush()
         prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
@@ -438,7 +453,45 @@ class PlaybackService : MediaLibraryService() {
         if (found.size >= 2) lib.updateState(e) { it.copy(fileChapters = found.distinctBy { c -> c.startMs }.sortedBy { c -> c.startMs }) }
     }
 
+    // ----- Lock screen -----
+
+    /** The artwork on the lock screen now, so it's only set again when the episode changes. */
+    private var lockScreenArtwork: String? = null
+
+    private fun showOnLockScreen() {
+        if (!Settings.lockScreenArt(prefs)) {
+            lockScreenArtwork = null
+            LockScreenArt.clear(this)
+            return
+        }
+        val url = exo.currentMediaItem?.mediaMetadata?.artworkUri?.toString() ?: return
+        if (url == lockScreenArtwork) return
+        lockScreenArtwork = url
+        scope.launch { LockScreenArt.show(this@PlaybackService, url) }
+    }
+
     // ----- Buttons -----
+
+    /** Whether the episode playing now is one of your favourites, for the heart button. */
+    private var lastFavourite: Boolean? = null
+
+    private fun isFavourite(): Boolean = exo.currentMediaItem?.mediaId?.let { lib.state(it)?.starred } == true
+
+    /** Keeps the heart in the notification and on the lock screen in step with the library. */
+    private fun refreshHeart() {
+        val now = isFavourite()
+        if (now != lastFavourite) {
+            lastFavourite = now
+            session?.setCustomLayout(skipButtons())
+        }
+    }
+
+    private fun toggleFavourite() {
+        val id = exo.currentMediaItem?.mediaId ?: return
+        val e = lib.episode(id) ?: return
+        lib.updateState(e) { it.copy(starred = !it.starred) }
+        refreshHeart()
+    }
 
     private fun skipButtons(): List<CommandButton> {
         val back = Settings.skipBackSec(prefs)
@@ -469,6 +522,11 @@ class PlaybackService : MediaLibraryService() {
                 .setSessionCommand(SKIP_COMMANDS[1])
                 .setDisplayName("Forward $forward seconds")
                 .setSlots(CommandButton.SLOT_FORWARD)
+                .build(),
+            CommandButton.Builder(if (isFavourite()) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+                .setSessionCommand(SKIP_COMMANDS[2])
+                .setDisplayName(if (isFavourite()) "Remove from Favourites" else "Add to Favourites")
+                .setSlots(CommandButton.SLOT_OVERFLOW)
                 .build(),
         )
     }
@@ -569,6 +627,7 @@ class PlaybackService : MediaLibraryService() {
             when (customCommand.customAction) {
                 CMD_BACK -> player.seekBack()
                 CMD_FORWARD -> player.seekForward()
+                CMD_FAVOURITE -> toggleFavourite()
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

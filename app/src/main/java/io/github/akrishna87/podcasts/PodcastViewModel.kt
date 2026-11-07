@@ -77,7 +77,7 @@ import java.util.UUID
 enum class Section(val label: String) { HOME("Home"), UP_NEXT("Up Next"), DISCOVER("Discover"), LIBRARY("Library") }
 
 enum class LibraryTab(val label: String) {
-    SHOWS("Shows"), FILTERS("Filters"), DOWNLOADS("Downloads"), STARRED("Starred"), BOOKMARKS("Bookmarks"), HISTORY("History")
+    SHOWS("Shows"), FILTERS("Filters"), DOWNLOADS("Downloads"), STARRED("Favourites"), BOOKMARKS("Bookmarks"), HISTORY("History")
 }
 
 enum class SearchMode(val label: String) { SHOWS("Shows"), EPISODES("Episodes"), MY_EPISODES("My shows") }
@@ -435,7 +435,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         keep(e)
         val on = lib.state(e.id)?.starred != true
         lib.updateState(e) { it.copy(starred = on) }
-        say(if (on) "Starred" else "Removed the star")
+        say(if (on) "Added to Favourites" else "Removed from Favourites")
     }
 
     fun dismissNew(ids: Collection<String>) = lib.dismissNew(ids)

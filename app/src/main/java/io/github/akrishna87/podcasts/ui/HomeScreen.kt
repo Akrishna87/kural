@@ -126,6 +126,29 @@ fun HomeScreen(vm: PodcastViewModel) {
                 items(upcoming.take(3), key = { "q" + it.id }) { e -> EpisodeRow(vm, e) }
             }
 
+            if (snap.starred.isNotEmpty()) {
+                item {
+                    SectionTitle("Favourites", action = "See all") {
+                        vm.libraryTab = LibraryTab.STARRED
+                        vm.selectSection(Section.LIBRARY)
+                    }
+                }
+                item {
+                    // Like a music app: tap a favourite and it plays.
+                    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(snap.starred.take(20), key = { "f" + it.id }) { e ->
+                            ShowTile(
+                                e.title,
+                                vm.podcastTitle(e.podcastId),
+                                vm.artworkOf(e),
+                                { vm.play(e); vm.showPlayer = true },
+                                Modifier.width(132.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
             if (snap.hits.isNotEmpty()) {
                 item { SectionTitle("Mentions you're following", action = "See all") { vm.open(Screen.Alerts) } }
                 items(snap.hits.take(3), key = { "h" + it.episode.id }) { hit ->

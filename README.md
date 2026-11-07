@@ -36,19 +36,23 @@ Reddit, and from what users praise in the leading apps.
 | "Let me cut out the bit I loved and send it" | **Clip this part** in the player: drag the clip's ends (it starts as the 30 seconds you just heard), nudge them or set one to *Now*, preview it, then **Save to phone** (Music/Podwave) or **Share clip** as an audio file to any app. Clips can be up to 10 minutes. |
 | Bookmarks and notes (Pocket Casts forum) | **Bookmark** any moment with an optional note. Bookmarks are listed per episode and in Library, and you can share a moment. |
 | "Alert me when my favourite guest appears on any show" | **Guests & topics**: follow a name or topic and Podwave searches every podcast in Apple's directory for new episodes that mention it, with notifications. **Tap a guest** on an episode to find their other appearances. |
-| Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, starred, released in the last N days, under N minutes). |
+| Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, favourites, released in the last N days, under N minutes). |
 | A smarter sleep timer | Minutes, **end of episode** or **end of chapter**. The sound fades out at the end. Press play within 5 minutes of it stopping and the same timer starts again. |
 | Android Auto | Browse Up Next, New episodes, In progress, Downloads and Shows from the car, and ask for a show by voice. |
 | Headphone buttons that make sense for talk | Next/previous on headphones and in the car **skip forward/back** (or change episode if you prefer). The notification and lock screen show skip-back/skip-forward buttons using your skip lengths. |
 | Voice search | Tap 🎤 in Discover's search box and say a show, person or topic. It uses the phone's own speech recogniser, so there's no extra permission. |
 | Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Podwave" also work. |
-| Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (starred and bookmarked ones are kept). |
+| Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (favourites and bookmarked ones are kept). |
 | Stats (Pocket Casts) | Time listened, **time saved** by speed, trimmed silences and skipped intros, episodes finished, and your most-listened shows. |
 
 There are more touches throughout: artwork-tinted player and show pages, Podcasting 2.0
 **funding** links ("Support the show"), hosts and guests on episode pages, search inside your
-own shows, mark all played, and stars: tap ☆ next to any episode (or in the player) to keep it
-under **Library → Starred**.
+own shows, and mark all played.
+
+**Favourites**: tap ♡ next to any episode, in the player, or on the notification and lock
+screen to keep it. Favourites have their own row on Home (tap one to play it) and their own
+tab under **Library → Favourites**. Turn on **Artwork on lock screen** in Settings and the
+episode's artwork fills the lock screen while it plays.
 
 ## How it's built
 

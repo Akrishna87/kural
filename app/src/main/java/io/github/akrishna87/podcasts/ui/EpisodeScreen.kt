@@ -136,8 +136,8 @@ private fun EpisodeDetails(vm: PodcastViewModel, e: Episode) {
                             active = s?.downloaded == true,
                         ) { if (s?.downloaded == true || (s?.downloadId ?: 0L) != 0L) vm.deleteDownload(e.id) else vm.download(e) }
                         RoundAction(
-                            if (s?.starred == true) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                            if (s?.starred == true) "Remove star" else "Star",
+                            if (s?.starred == true) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            if (s?.starred == true) "Remove from Favourites" else "Favourite",
                             active = s?.starred == true,
                         ) { vm.toggleStar(e) }
                         RoundAction(Icons.Rounded.Share, "Share") { context.startActivity(vm.shareIntent(e)) }

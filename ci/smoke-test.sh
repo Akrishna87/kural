@@ -292,8 +292,8 @@ wait_for library 'text="Podwave Test Show"' 15 "the Library doesn't list the fol
 shot 10-library
 tap library "Podwave Test Show"
 wait_for show-again 'text="Episode Two Plain"' 15 "the show page didn't open from the Library"
-tap show-again "Star Episode Two Plain"
-wait_for starred-episode 'content-desc="Remove star from Episode Two Plain"' 10 "starring the episode didn't work"
+tap show-again "Add Episode Two Plain to Favourites"
+wait_for starred-episode 'content-desc="Remove Episode Two Plain from Favourites"' 10 "adding the episode to Favourites didn't work"
 tap starred-episode "More for Episode Two Plain"
 sleep 1
 dump menu
@@ -306,14 +306,14 @@ grep -q 'text="NOW PLAYING"' "$OUT/upnext.xml" || fail "Up Next doesn't show wha
 shot 11-up-next
 echo "PASS: Up Next"
 
-echo "--- Starred episodes"
+echo "--- Favourites"
 tap upnext "Library" last
 sleep 1
 dump library-again
-tap library-again "Starred"
-wait_for starred 'text="Episode Two Plain"' 10 "the starred episode isn't under Library → Starred"
+tap library-again "Favourites"
+wait_for starred 'text="Episode Two Plain"' 10 "the favourite episode isn't under Library → Favourites"
 shot 11b-starred
-echo "PASS: starred episodes"
+echo "PASS: favourites"
 
 echo "--- Following a huge show (1,500 episodes, ~30 MB feed)"
 tap starred "Discover" last
@@ -364,6 +364,7 @@ dump before-home
 tap before-home "Home" last
 wait_for home-full 'text="Your shows"' 15 "Home doesn't list the shows you follow"
 grep -q 'text="Podwave Test Show"' "$OUT/home-full.xml" || fail "Home's 'Your shows' doesn't include the test show"
+grep -q 'text="Favourites"' "$OUT/home-full.xml" || echo "WARNING: Home's Favourites row isn't on the first screen"
 grep -q 'text="Latest from your shows"' "$OUT/home-full.xml" || fail "Home doesn't show the latest episodes from your shows"
 shot 14-home-following
 for _ in 1 2 3 4 5 6; do grep -q 'text="SUGGESTED FOR YOU"' "$OUT/home-full2.xml" 2>/dev/null && break; scroll_down; dump home-full2; done

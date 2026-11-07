@@ -34,7 +34,7 @@ import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.data.AutoAdd
 import io.github.akrishna87.podcasts.feed.htmlToText
 
-private enum class EpisodeView(val label: String) { ALL("All"), UNPLAYED("Unplayed"), DOWNLOADED("Downloaded"), STARRED("Starred") }
+private enum class EpisodeView(val label: String) { ALL("All"), UNPLAYED("Unplayed"), DOWNLOADED("Downloaded"), STARRED("Favourites") }
 
 /** A show: what it is, follow it, its settings, and its episodes. */
 @Composable
