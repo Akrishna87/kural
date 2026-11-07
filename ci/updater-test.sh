@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs inside the Android emulator job, after the smoke test: checks Settings > App updates.
+# Runs inside the Android emulator job, before the smoke test: checks Settings > App updates.
 # It taps "Check for updates" and expects a clear answer (up to date, an update is ready, or a
 # "couldn't check" message such as no connection or nothing published yet), and that the app
 # doesn't crash. It can't expect "an update is ready" here, because that needs a newer published
@@ -100,3 +100,7 @@ grep -E "AppUpdater" "$OUT/logcat.txt" | tail -5 || true
 grep -q "FATAL EXCEPTION" "$OUT/logcat.txt" && fail "the app crashed while checking for updates"
 grep -o 'text="[^"]*\(latest build\|is ready\|check for updates\.\)[^"]*"' "$OUT/result.xml" | head -3 || true
 echo "PASS: Check for updates answers ($answer) and the app keeps running"
+
+# Leave a fresh app behind for the smoke test, which expects to open on Home.
+adb shell am force-stop "$PKG"
+adb shell pm clear "$PKG" > /dev/null

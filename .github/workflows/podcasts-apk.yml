@@ -62,8 +62,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none
           script: |
-            bash ci/smoke-test.sh apk/Podwave.apk smoke-out
             bash ci/updater-test.sh apk/Podwave.apk smoke-out/updater
+            bash ci/smoke-test.sh apk/Podwave.apk smoke-out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
