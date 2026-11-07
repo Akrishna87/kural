@@ -61,7 +61,9 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none
-          script: bash ci/smoke-test.sh apk/Podwave.apk smoke-out
+          script: |
+            bash ci/updater-test.sh apk/Podwave.apk smoke-out/updater
+            bash ci/smoke-test.sh apk/Podwave.apk smoke-out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -71,6 +73,9 @@ jobs:
             smoke-out/*.xml
             smoke-out/*.txt
             smoke-out/*.log
+            smoke-out/updater/*.png
+            smoke-out/updater/*.xml
+            smoke-out/updater/*.txt
 
   publish:
     needs: [build, smoke-test]
@@ -86,13 +91,28 @@ jobs:
         with:
           name: podcasts-smoke-test-screens
           path: out/screens
+      - name: Describe the build for the in-app updater
+        run: |
+          # Settings > App updates reads this file; versionCode matches the build number that was
+          # passed to Gradle as VERSION_CODE.
+          cat > out/version.json <<EOF
+          {
+            "versionCode": ${{ github.run_number }},
+            "versionName": "1.0.${{ github.run_number }}",
+            "apk": "Podwave.apk",
+            "sha256": "$(sha256sum out/Podwave.apk | cut -d' ' -f1)",
+            "size": $(stat -c %s out/Podwave.apk)
+          }
+          EOF
+          cat out/version.json
+          python3 -c "import json; json.load(open('out/version.json'))"
       - name: Publish the APK as the "podcasts-latest" release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete podcasts-latest --cleanup-tag --yes || true
-          gh release create podcasts-latest out/Podwave.apk out/screens/*.png \
+          gh release create podcasts-latest out/Podwave.apk out/version.json out/screens/*.png \
             --target "$GITHUB_SHA" \
             --prerelease \
             --title "Podwave podcasts for Android (build ${{ github.run_number }})" \

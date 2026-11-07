@@ -13,6 +13,10 @@
     <!-- "New episode" and topic alerts, only for the shows and topics you turn them on for. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- "Check for updates" in Settings: installs a newer Podwave build from GitHub if you agree.
+         Android shows its own confirmation. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!--
         Plenty of podcasts still publish their feeds and audio over plain http, so cleartext has
         to be allowed for those to play. The directory itself is always searched over https.
@@ -117,5 +121,10 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <!-- Gets Android's answer when an update is being installed. -->
+        <receiver
+            android:name=".updater.InstallResultReceiver"
+            android:exported="false" />
     </application>
 </manifest>

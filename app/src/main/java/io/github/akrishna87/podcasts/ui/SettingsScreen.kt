@@ -86,6 +86,8 @@ fun SettingsScreen(vm: PodcastViewModel) {
                 SettingRow("Export your shows", "OPML", "To move to another app or keep a backup") { exporter.launch("podwave-shows.opml") }
                 SettingRow("Listening stats", "") { vm.open(Screen.StatsPage) }
             }
+            item { SettingsHeader("App updates") }
+            item { UpdateCard() }
             item { SettingsHeader("About") }
             item {
                 Text(
