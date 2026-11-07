@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Yap"
+rootProject.name = "Podwave"
 include(":app")

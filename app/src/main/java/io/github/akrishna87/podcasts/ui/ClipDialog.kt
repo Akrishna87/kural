@@ -102,7 +102,7 @@ fun ClipDialog(vm: PodcastViewModel, e: Episode, onDismiss: () -> Unit) {
                 } else {
                     Text(
                         if (android.os.Build.VERSION.SDK_INT >= 29) "Saved clips go to ${Clips.FOLDER}, where music apps and file managers find them."
-                        else "Saved clips go to Yap's own Music folder.",
+                        else "Saved clips go to Podwave's own Music folder.",
                         color = Palette.Faint,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(top = 10.dp),

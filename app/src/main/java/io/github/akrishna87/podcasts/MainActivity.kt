@@ -8,8 +8,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import io.github.akrishna87.podcasts.ui.YapApp
-import io.github.akrishna87.podcasts.ui.YapTheme
+import io.github.akrishna87.podcasts.ui.PodwaveApp
+import io.github.akrishna87.podcasts.ui.PodwaveTheme
 
 class MainActivity : ComponentActivity() {
     private val vm: PodcastViewModel by viewModels()
@@ -23,8 +23,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) vm.handleIntent(intent)
         setContent {
-            YapTheme {
-                YapApp(vm)
+            PodwaveTheme {
+                PodwaveApp(vm)
             }
         }
     }

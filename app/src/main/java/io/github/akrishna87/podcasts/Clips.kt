@@ -34,7 +34,7 @@ object Clips {
     const val MAX_MS = 10 * 60_000L
     const val DEFAULT_MS = 30_000L
     /** Saved clips go here, where music apps and file managers find them. */
-    const val FOLDER = "Music/Yap"
+    const val FOLDER = "Music/Podwave"
 
     /** The clip's first guess: the 30 seconds you just heard. */
     fun defaultRange(positionMs: Long, durationMs: Long): LongRange {
