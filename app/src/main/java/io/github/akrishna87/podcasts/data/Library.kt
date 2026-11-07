@@ -146,7 +146,8 @@ class Library(private val dir: File, private val writer: ScheduledExecutorServic
 
     private fun snapshot(name: String): String? = when {
         name == "podcasts.json" -> JSONArray().also { a -> podcasts.values.forEach { a.put(it.toJson()) } }.toString()
-        name == "states.json" -> JSONArray().also { a -> states.values.forEach { if (!it.isEmpty) a.put(it.toJson()) } }.toString()
+        // Queued episodes keep their (maybe empty) state: Up Next only lists episodes with one.
+        name == "states.json" -> JSONArray().also { a -> states.values.forEach { if (!it.isEmpty || it.episodeId in queue) a.put(it.toJson()) } }.toString()
         name == "queue.json" -> JSONArray(queue).toString()
         name == "bookmarks.json" -> JSONArray().also { a -> bookmarks.forEach { a.put(it.toJson()) } }.toString()
         name == "filters.json" -> JSONArray().also { a -> filters.forEach { a.put(it.toJson()) } }.toString()
