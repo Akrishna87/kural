@@ -52,6 +52,8 @@ There are more touches throughout: artwork-tinted player and show pages, Podcast
 own shows, mark all played, and a **Dark / Light / Match phone** theme with eight accent colours
 (or your wallpaper's Material You colours on Android 12+).
 
+**Player gestures**: swipe the player down to close it; swipe the artwork (or the mini player) sideways to change episode, swipe the mini player up to open the player, and double-tap the artwork's left or right half to skip back or forward.
+
 **Favourites**: tap ♡ next to any episode, in the player, or on the notification and lock
 screen to keep it. Favourites have their own row on Home (tap one to play it) and their own
 tab under **Library → Favourites**.

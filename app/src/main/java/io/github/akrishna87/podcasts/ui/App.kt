@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +40,7 @@ import io.github.akrishna87.podcasts.PodcastViewModel
 import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.Section
 import io.github.akrishna87.podcasts.Settings
+import kotlin.math.abs
 
 @Composable
 fun PodwaveApp(vm: PodcastViewModel) {
@@ -157,17 +161,45 @@ private fun RowScope.NavItem(label: String, selectedIcon: ImageVector, icon: Ima
     }
 }
 
-/** The episode in the player, above the tabs. Tap it for the full player. */
+/** The episode in the player, above the tabs. Tap it or swipe it up for the full player; swipe sideways to change episode. */
 @Composable
 private fun MiniPlayer(vm: PodcastViewModel) {
     val e = vm.current ?: return
     val art = vm.artworkOf(e)
     val tint = artTint(vm, art, vm.podcastTitle(e.podcastId))
     val fraction = if (vm.durationMs > 0) (vm.positionMs.toFloat() / vm.durationMs).coerceIn(0f, 1f) else 0f
+    // Swipe up to open the full player; left for the next episode, right for the one before.
+    var swipeX by remember { mutableFloatStateOf(0f) }
+    var swipeY by remember { mutableFloatStateOf(0f) }
     Box(Modifier.padding(horizontal = 8.dp).padding(bottom = 2.dp)) {
         Column(
             Modifier
                 .fillMaxWidth()
+                // Detected before the layer that slides the card, so the finger is measured against the screen.
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            val threshold = 60.dp.toPx()
+                            if (abs(swipeX) > abs(swipeY)) {
+                                if (swipeX < -threshold) vm.nextEpisode() else if (swipeX > threshold) previousEpisode(vm)
+                            } else if (swipeY < -threshold / 2) {
+                                vm.showPlayer = true
+                            }
+                            swipeX = 0f
+                            swipeY = 0f
+                        },
+                        onDragCancel = { swipeX = 0f; swipeY = 0f },
+                    ) { change, drag ->
+                        change.consume()
+                        swipeX += drag.x
+                        swipeY += drag.y
+                    }
+                }
+                .graphicsLayer {
+                    translationX = if (abs(swipeX) > abs(swipeY)) swipeX * 0.5f else 0f
+                    translationY = if (abs(swipeY) >= abs(swipeX)) swipeY.coerceAtMost(0f) * 0.3f else 0f
+                    alpha = 1f - (abs(swipeX) / 900f).coerceAtMost(0.5f)
+                }
                 .clip(RoundedCornerShape(12.dp))
                 .background(tint.deep(0.62f))
                 .clickable(onClickLabel = "Open the player") { vm.showPlayer = true },

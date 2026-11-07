@@ -236,6 +236,58 @@ dump player-fast
 grep -q 'text="1.5×"' "$OUT/player-fast.xml" || fail "the speed didn't change to 1.5×"
 echo "PASS: playback speed"
 
+echo "--- Player gestures: double-tap the artwork, swipe down to close, swipe the mini player up"
+tap player-fast "Now playing" last # the tab (the header says NOW PLAYING too, and comes first)
+wait_for gestures 'content-desc="Episode artwork"' 10 "the Now playing tab doesn't show the artwork"
+read -r AX1 AY1 AX2 AY2 <<<"$(python3 "$HERE/find_text.py" "$OUT/gestures.xml" "Episode artwork" exact-bounds)"
+AY=$(((AY1 + AY2) / 2))
+# The position the app reports to Android; exact while paused.
+pos() { session; awk -v p="package=$PKG" 'index($0, p) { f = 1 } f && match($0, /position=[0-9]+/) { print substr($0, RSTART + 9, RLENGTH - 9); exit }' "$OUT/session.txt"; }
+double_tap() { # double_tap <x> <min change in ms, negative for back>: retries, since adb's two taps aren't always quick enough
+  local gap before after
+  for gap in 0.12 0.15 0.1 0.2 0.08 0.25; do
+    before=$(pos)
+    adb shell "input tap $1 $AY & sleep $gap; input tap $1 $AY"
+    sleep 2
+    after=$(pos)
+    [ -n "$before" ] && [ -n "$after" ] || fail "couldn't read the playback position"
+    echo "double tap at x=$1 (taps $gap s apart): $before -> $after ms"
+    if [ "$2" -gt 0 ] && [ $((after - before)) -ge "$2" ]; then return 0; fi
+    if [ "$2" -lt 0 ] && [ $((after - before)) -le "$2" ]; then return 0; fi
+  done
+  fail "double-tapping the artwork at x=$1 didn't move the position by $2 ms"
+}
+adb shell input keyevent KEYCODE_MEDIA_PAUSE # paused, so the reported position is exact
+for _ in $(seq 1 5); do playing || break; sleep 1; done
+playing && fail "the media pause key didn't pause"
+double_tap $((AX1 + (AX2 - AX1) * 3 / 4)) 25000 # the right half: forward 30 s (the default)
+double_tap $((AX1 + (AX2 - AX1) / 4)) -8000 # the left half: back 10 s (the default)
+echo "PASS: double-tapping the artwork's sides skips forward and back"
+# Back where it was (+30 s - 10 s), so the episode still has time left for the later steps.
+dump gestures-paused
+tap gestures-paused "Back 10 seconds" last
+sleep 1
+tap gestures-paused "Back 10 seconds" last
+sleep 1
+adb shell input keyevent KEYCODE_MEDIA_PLAY
+for _ in $(seq 1 5); do playing && break; sleep 1; done
+playing || fail "playback didn't resume after the double-tap test"
+adb shell input swipe $((W / 2)) $((H * 25 / 100)) $((W / 2)) $((H * 85 / 100)) 300 # swipe down
+closed=""
+for _ in $(seq 1 5); do
+  sleep 1
+  dump after-swipe-down
+  grep -q 'text="NOW PLAYING"' "$OUT/after-swipe-down.xml" || { closed=yes; break; }
+done
+[ -n "$closed" ] || fail "swiping down didn't close the full player"
+shot 8a-swiped-down
+echo "PASS: swiping the player down closes it"
+# The mini player shows the episode's title (the episode page underneath does too, earlier in the dump).
+read -r MX MY <<<"$(python3 "$HERE/find_text.py" "$OUT/after-swipe-down.xml" "Episode One With Chapters" last)"
+adb shell input swipe $MX $MY $MX $((MY - H / 4)) 300 # swipe the mini player up
+wait_for player-fast 'text="NOW PLAYING"' 10 "swiping the mini player up didn't open the full player"
+echo "PASS: swiping the mini player up opens the full player"
+
 echo "--- Equaliser (from the player's sound options)"
 tap player-fast "Trim silence and volume boost" last
 wait_for sound 'text="Equaliser"' 10 "the sound options have no Equaliser entry"

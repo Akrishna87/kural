@@ -1,7 +1,11 @@
 package io.github.akrishna87.podcasts.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,13 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,7 +47,10 @@ import io.github.akrishna87.podcasts.data.Episode
 import io.github.akrishna87.podcasts.feed.Transcript
 import io.github.akrishna87.podcasts.feed.formatClock
 import io.github.akrishna87.podcasts.feed.showNotes
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private enum class PlayerTab(val label: String) { NOW("Now playing"), CHAPTERS("Chapters"), TRANSCRIPT("Transcript"), NOTES("Notes") }
 
@@ -62,12 +72,30 @@ fun PlayerScreen(vm: PodcastViewModel) {
     val back = Settings.skipBackSec(prefs)
     val forward = Settings.skipForwardSec(prefs)
     val fx = vm.effects()
+    val scope = rememberCoroutineScope()
+    // Swipe down anywhere to close the player (lists and the seek bar keep their own drags).
+    val dragDown = remember { Animatable(0f) }
 
     // Dark in every theme, tinted by the artwork. (The dialogs below follow the app's theme.)
     AlwaysDark {
         Box(
             Modifier
                 .fillMaxSize()
+                // Detected outside the offset below, so the finger is measured against the screen
+                // rather than against the player that's moving along with it.
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (dragDown.value > size.height * 0.2f) vm.showPlayer = false
+                            else scope.launch { dragDown.animateTo(0f) }
+                        },
+                        onDragCancel = { scope.launch { dragDown.animateTo(0f) } },
+                    ) { change, dy ->
+                        change.consume()
+                        scope.launch { dragDown.snapTo((dragDown.value + dy).coerceAtLeast(0f)) }
+                    }
+                }
+                .offset { IntOffset(0, dragDown.value.roundToInt()) }
                 .background(Brush.verticalGradient(listOf(tint.deep(0.35f), tint.deep(0.8f), LocalAppColors.current.background)))
                 // Keep taps from reaching the screen underneath.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
@@ -273,11 +301,86 @@ private fun skipForwardIcon(sec: Int): ImageVector = when (sec) {
     else -> Icons.Rounded.FastForward
 }
 
+/**
+ * The episode before this one: the latest in History that isn't in Up Next. The one playing stays
+ * at the top of Up Next, so swiping back again keeps going further back, and swiping forward
+ * ([PodcastViewModel.nextEpisode]) returns through them in order.
+ */
+internal fun previousEpisode(vm: PodcastViewModel) {
+    if (vm.currentId == null) return
+    val queued = vm.snap.queue.map { it.id }.toSet()
+    val before = vm.snap.history.firstOrNull { it.id !in queued }
+    if (before == null) {
+        vm.say("Nothing played before this")
+        return
+    }
+    vm.lib.playNow(before, play = vm.isPlaying)
+}
+
 @Composable
 private fun NowPanel(vm: PodcastViewModel, e: Episode, art: String?, show: String, chapter: Chapter?) {
     val image = chapter?.imageUrl ?: art
-    Box(Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true).padding(8.dp), contentAlignment = Alignment.Center) {
-        Artwork(image, show, Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)), RoundedCornerShape(18.dp), titleSize = 22)
+    val prefs = vm.prefs()
+    val back = Settings.skipBackSec(prefs)
+    val forward = Settings.skipForwardSec(prefs)
+    // Swipe the artwork sideways to change episode.
+    var swipeX by remember { mutableFloatStateOf(0f) }
+    // Double-tap its left or right half to skip back or forward; a bubble says how far, briefly.
+    var jumpFlash by remember { mutableStateOf<Pair<Int, Long>?>(null) }
+    LaunchedEffect(jumpFlash) {
+        if (jumpFlash != null) {
+            delay(650)
+            jumpFlash = null
+        }
+    }
+    Box(
+        Modifier
+            .fillMaxHeight()
+            .aspectRatio(1f, matchHeightConstraintsFirst = true)
+            .semantics { contentDescription = "Episode artwork" }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        val threshold = 80.dp.toPx()
+                        if (swipeX < -threshold) vm.nextEpisode() else if (swipeX > threshold) previousEpisode(vm)
+                        swipeX = 0f
+                    },
+                    onDragCancel = { swipeX = 0f },
+                ) { change, dx ->
+                    change.consume()
+                    swipeX += dx
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { at ->
+                    val dir = if (at.x < size.width / 2f) -1 else 1
+                    if (dir < 0) vm.seekBack() else vm.seekForward()
+                    jumpFlash = dir to System.nanoTime()
+                })
+            }
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Artwork(
+            image,
+            show,
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = swipeX * 0.6f
+                    alpha = 1f - (abs(swipeX) / 1200f).coerceAtMost(0.4f)
+                }
+                .clip(RoundedCornerShape(18.dp)),
+            RoundedCornerShape(18.dp),
+            titleSize = 22,
+        )
+        jumpFlash?.let { (dir, _) ->
+            JumpBadge(
+                if (dir < 0) skipBackIcon(back) else skipForwardIcon(forward),
+                if (dir < 0) "−$back s" else "+$forward s",
+                Modifier.align(if (dir < 0) Alignment.CenterStart else Alignment.CenterEnd).padding(horizontal = 20.dp),
+            )
+        }
         val url = chapter?.url
         if (url != null) {
             val context = LocalContext.current
@@ -289,6 +392,19 @@ private fun NowPanel(vm: PodcastViewModel, e: Episode, art: String?, show: Strin
                 Text("Chapter link", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+}
+
+/** The "−10 s" / "+30 s" bubble shown after double-tapping the artwork. */
+@Composable
+private fun JumpBadge(icon: ImageVector, label: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+        Text(label, fontWeight = FontWeight.SemiBold)
     }
 }
 
