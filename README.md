@@ -1,21 +1,20 @@
-# 🎙️ Yap podcasts for Android
+# 🎙️ Podwave podcasts for Android
 
-Yap is a free podcast player for Android, because a podcast is people having a good yap. It has
-no account, ads or tracking. It opens on **your** shows rather than on promotions, and it brings together the
-features people like most in Pocket Casts, Overcast, Apple Podcasts, Castro and AntennaPod.
+Podwave is a free podcast player for Android. It has no account, ads or tracking. It opens on
+**your** shows rather than on promotions, and it brings together the features people like most in Pocket Casts, Overcast, Apple Podcasts, Castro and AntennaPod.
 
 ## Installing it
 
 1. On your Android phone, open the
    [latest build](https://github.com/Akrishna87/kural/releases/tag/podcasts-latest)
-   and tap **Yap.apk** to download it.
+   and tap **Podwave.apk** to download it.
 2. Open the downloaded file. Android will ask you to allow installing apps from your browser
    (or Files app). Allow it, then tap **Install**. Google Play Protect may warn that it doesn't
    recognise the app, because it isn't from the Play Store. Tap **More details → Install anyway**.
-3. Open **Yap**. Find shows in **Discover**, or bring your shows from another app with
+3. Open **Podwave**. Find shows in **Discover**, or bring your shows from another app with
    **Import from another app (OPML)**.
 
-To update, install a newer `Yap.apk` the same way. It installs over the old one and keeps
+To update, install a newer `Podwave.apk` the same way. It installs over the old one and keeps
 your shows, Up Next and your place in every episode.
 
 ## What listeners asked for, and where it is
@@ -23,7 +22,7 @@ your shows, Up Next and your place in every episode.
 The features come from what listeners ask for on the Pocket Casts and AntennaPod forums and on
 Reddit, and from what users praise in the leading apps.
 
-| People asked for | In Yap |
+| People asked for | In Podwave |
 |---|---|
 | "Take me straight to my subscriptions, not ads for other shows" | **Home** opens on your own shows: Continue listening, **Your shows**, Up Next, **New episodes**, **Latest from your shows** and mentions you follow. **Suggestions** come last, picked from the top charts of the categories you listen to (a "Careers" show counts for Business), leaving out what you already follow. |
 | A queue you control (Pocket Casts' Up Next) | **Up Next**: play next / play last, drag ≡ to reorder, swipe to remove, total time left (adjusted for speed). Finished episodes leave by themselves. |
@@ -34,13 +33,14 @@ Reddit, and from what users praise in the leading apps.
 | Chapters | Feed chapters (Podlove), Podcasting 2.0 JSON chapters, and **ID3 chapters inside the MP3**. Chapter list, next/previous chapter buttons and chapter artwork. |
 | Transcripts (Apple Podcasts) | Podcasting 2.0 transcripts (JSON, WebVTT, SRT, HTML). A synced view highlights the line being spoken; tap a line to jump there. |
 | "Find specific moments in episodes" | **Timestamps in show notes are tappable** and jump to that moment. Links in notes open too. |
+| "Let me cut out the bit I loved and send it" | **Clip this part** in the player: drag the clip's ends (it starts as the 30 seconds you just heard), nudge them or set one to *Now*, preview it, then **Save to phone** (Music/Podwave) or **Share clip** as an audio file to any app. Clips can be up to 10 minutes. |
 | Bookmarks and notes (Pocket Casts forum) | **Bookmark** any moment with an optional note. Bookmarks are listed per episode and in Library, and you can share a moment. |
-| "Alert me when my favourite guest appears on any show" | **Guests & topics**: follow a name or topic and Yap searches every podcast in Apple's directory for new episodes that mention it, with notifications. **Tap a guest** on an episode to find their other appearances. |
+| "Alert me when my favourite guest appears on any show" | **Guests & topics**: follow a name or topic and Podwave searches every podcast in Apple's directory for new episodes that mention it, with notifications. **Tap a guest** on an episode to find their other appearances. |
 | Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, starred, released in the last N days, under N minutes). |
 | A smarter sleep timer | Minutes, **end of episode** or **end of chapter**. The sound fades out at the end. Press play within 5 minutes of it stopping and the same timer starts again. |
 | Android Auto | Browse Up Next, New episodes, In progress, Downloads and Shows from the car, and ask for a show by voice. |
 | Headphone buttons that make sense for talk | Next/previous on headphones and in the car **skip forward/back** (or change episode if you prefer). The notification and lock screen show skip-back/skip-forward buttons using your skip lengths. |
-| Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Yap" also work. |
+| Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Podwave" also work. |
 | Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (starred and bookmarked ones are kept). |
 | Stats (Pocket Casts) | Time listened, **time saved** by speed, trimmed silences and skipped intros, episodes finished, and your most-listened shows. |
 
@@ -63,11 +63,13 @@ background refresh, Coil for artwork and AndroidX Palette for artwork colours.
 - `PlaybackService.kt` owns the player and keeps it in step with Up Next. It applies each show's
   speed and effects, skips intros and outros, runs the sleep timer, reads ID3 chapters, keeps
   stats, and serves Android Auto (`CarLibrary.kt`).
+- `Clips.kt` cuts clips with Media3 Transformer (to AAC in .m4a), from the download if there is
+  one, saves them through MediaStore and shares them through a FileProvider.
 - `Refresh.kt` checks feeds (politely, with ETag/Last-Modified), handles new episodes as each
   show's settings say, checks guest and topic alerts, and posts notifications.
-- `ci/icon/gen.py` draws the launcher icon: a lime "yap" speech-bubble sticker (thick outlines,
-  a hard shadow, sparkles) on a hot pink to orange gradient, plus its one-colour themed version
-  and the status-bar icon.
+- `ci/icon/gen.py` draws the launcher icon: a bold white "P" with a pink sound wave through its
+  bowl and two broadcast arcs (the podcast sign) on an indigo to violet gradient, plus its
+  one-colour themed version and the status-bar icon.
 - `ci/smoke-test.sh` runs on an Android emulator for every build. It checks Apple's real top
   chart and search, then follows a test show served from the CI machine (with chapters, a
   transcript and a guest). It plays an episode, opens its chapters and transcript, changes
@@ -78,5 +80,5 @@ The unit tests in `app/src/test` cover feed parsing (dates, durations, chapters,
 show notes, OPML), the directory's answers, and the library (Up Next, filters, saving, autoplay
 order).
 
-Builds are made by the [Yap APK workflow](.github/workflows/podcasts-apk.yml) on every
+Builds are made by the [Podwave APK workflow](.github/workflows/podcasts-apk.yml) on every
 push to this repo.

@@ -1,63 +1,60 @@
 """Usage: python3 ci/icon/gen.py app/src/main/res <preview dir>
 
 Generate the launcher icon as Android vector drawables, plus SVG previews built from the same
-shapes. The art is a sticker: a lime speech bubble with the word "yap" in it, thick ink
-outlines and a hard drop shadow, tilted a little, with sparkles, on a hot pink to orange
-gradient. Yap is the app's name: a podcast is people having a good yap."""
-import os, sys
+shapes. The art is a bold white "P" for Podwave with a pink sound wave running through its
+bowl and two broadcast arcs coming off it (the podcast sign), on a deep indigo to violet
+gradient. Also writes the one-colour themed icon and the status-bar icon."""
+import math, os, sys
 
 OUT_RES = sys.argv[1]          # app/src/main/res
 OUT_PREVIEW = sys.argv[2]      # preview dir
 
-BG_TOP, BG_BOTTOM = "#FF3D8B", "#FF8A3D"   # hot pink to orange
-INK = "#14101F"                            # outlines and letters
-LIME = "#C6FF3D"                           # the bubble
-SPARKLE = "#FFFFFF"
-TILT = -6                                  # degrees: a playful lean
-SHADOW = 7                                 # hard shadow offset, down and right
-SCALE = 0.66                               # launchers show the middle 72 of 108dp; the bubble has to fit that circle
+BG_TOP, BG_BOTTOM = "#22186B", "#6A3CFF"   # deep indigo to violet
+WHITE = "#FFFFFF"
+PINK = "#FF4D8D"                            # the wave
+SCALE = 0.66                                # launchers show the middle 72 of 108dp; the art has to fit that circle
+SHIFT_X, SHIFT_Y = -18, -2                  # the arcs make the art wider on the right, so move it left to centre it
 
 
-def sparkle(cx, cy, r):
-    k = r * 0.22
-    return (f"M{cx},{cy-r} C{cx+k},{cy-k} {cx+k},{cy-k} {cx+r},{cy} C{cx+k},{cy+k} {cx+k},{cy+k} {cx},{cy+r} "
-            f"C{cx-k},{cy+k} {cx-k},{cy+k} {cx-r},{cy} C{cx-k},{cy-k} {cx-k},{cy-k} {cx},{cy-r} Z")
+def rrect(x, y, w, h, r):
+    return (f"M{x+r},{y} h{w-2*r} a{r},{r} 0 0 1 {r},{r} v{h-2*r} a{r},{r} 0 0 1 {-r},{r} "
+            f"h{-(w-2*r)} a{r},{r} 0 0 1 {-r},{-r} v{-(h-2*r)} a{r},{r} 0 0 1 {r},{-r} z")
 
 
-def circle(cx, cy, r):
-    return f"M{cx-r},{cy} a{r},{r} 0 1 0 {2*r},0 a{r},{r} 0 1 0 {-2*r},0 z"
+def arc(cx, cy, r, a0, a1):
+    x0, y0 = cx + r * math.cos(math.radians(a0)), cy + r * math.sin(math.radians(a0))
+    x1, y1 = cx + r * math.cos(math.radians(a1)), cy + r * math.sin(math.radians(a1))
+    return f"M{x0:.1f},{y0:.1f} A{r},{r} 0 0 1 {x1:.1f},{y1:.1f}"
 
 
-# Shapes: (kind, path, colour, stroke width, shadow?, role). Drawn on a 192 grid.
-# role: "art" (tilted), "letter" (tilted; the word), "sparkle" (not tilted).
-BUBBLE = ("M60,42 H132 A30,30 0 0 1 162,72 V108 A30,30 0 0 1 132,138 H86 L54,160 L60,138 "
-          "A30,30 0 0 1 30,108 V72 A30,30 0 0 1 60,42 Z")
-LETTER_W = 11
-LETTERS = [
-    ("stroke", "M56,74 L66,96 M76,74 L62,110"),     # y
-    ("stroke", circle(97, 86, 12)),                  # a
-    ("stroke", "M109,74 L109,98"),
-    ("stroke", "M128,74 L128,116"),                  # p
-    ("stroke", circle(140, 86, 12)),
-]
-shapes = [
-    ("fill", BUBBLE, INK, 0, True, "shadow-only"),
-    ("fill", BUBBLE, LIME, 0, False, "art"),
-    ("stroke", BUBBLE, INK, 6, False, "art"),
-]
-shapes += [(k, d, INK, LETTER_W, False, "letter") for k, d in LETTERS]
-shapes += [
-    ("fill", sparkle(158, 44, 12), SPARKLE, 0, False, "sparkle"),
-    ("fill", sparkle(36, 146, 7), SPARKLE, 0, False, "sparkle"),
-]
+def wave(x0, x1, cy, amp, periods, steps=60):
+    """A sound wave that swells in the middle and fades at both ends."""
+    pts = []
+    for i in range(steps + 1):
+        t = i / steps
+        y = cy - amp * math.sin(math.pi * t) * math.sin(2 * math.pi * periods * t)
+        pts.append(f"{x0 + (x1 - x0) * t:.1f},{y:.1f}")
+    return "M" + " L".join(pts)
+
+
+# Shapes: (kind, path, colour, stroke width, opacity). Drawn on a 192 grid.
+STEM = rrect(50, 44, 28, 108, 14)
+BOWL = "M64,44 H106 A36,36 0 0 1 106,116 H64 Z"
+WAVE = wave(74, 134, 80, 15, 1.5)
+# In the one-colour icon the P is an outline, so the wave stays clear of its stem.
+MONO_WAVE = wave(82, 130, 80, 13, 1.5)
+ARCS = [(arc(106, 80, 50, -48, 48), 0.95), (arc(106, 80, 65, -48, 48), 0.55)]
+shapes = [("fill", STEM, WHITE, 0, 1), ("fill", BOWL, WHITE, 0, 1), ("stroke", WAVE, PINK, 8, 1)]
+shapes += [("stroke", d, WHITE, 8, o) for d, o in ARCS]
 
 
 # ----- Android vector drawables -----
 
-def vpath(kind, d, color, width):
+def vpath(kind, d, color, width, alpha=1):
+    a = "" if alpha == 1 else (f' android:fillAlpha="{alpha}"' if kind == "fill" else f' android:strokeAlpha="{alpha}"')
     if kind == "fill":
-        return f'<path android:fillColor="{color}" android:pathData="{d}" />'
-    return (f'<path android:strokeColor="{color}" android:strokeWidth="{width}" '
+        return f'<path android:fillColor="{color}"{a} android:pathData="{d}" />'
+    return (f'<path android:strokeColor="{color}" android:strokeWidth="{width}"{a} '
             f'android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="{d}" />')
 
 
@@ -73,46 +70,23 @@ def write(name, text):
     print("wrote", path)
 
 
-def foreground():
-    tilt_open = f'        <group android:pivotX="96" android:pivotY="96" android:rotation="{TILT}">'
-    lines = [f'    <group android:pivotX="96" android:pivotY="96" android:scaleX="{SCALE}" android:scaleY="{SCALE}">']
-    # The hard shadow: every shadowed shape in ink, shifted.
-    lines.append(f'        <group android:translateX="{SHADOW}" android:translateY="{SHADOW}">')
-    lines.append(tilt_open.replace("        ", "            ", 1))
-    for kind, d, color, width, shadow, role in shapes:
-        if shadow:
-            lines.append("                " + vpath(kind, d, INK, width))
-    lines.append("            </group>")
-    lines.append("        </group>")
-    lines.append(tilt_open)
-    for kind, d, color, width, shadow, role in shapes:
-        if role in ("art", "letter"):
-            lines.append("            " + vpath(kind, d, color, width))
-    lines.append("        </group>")
-    for kind, d, color, width, shadow, role in shapes:
-        if role == "sparkle":
-            lines.append("        " + vpath(kind, d, color, width))
-    lines.append("    </group>")
-    return "\n".join(lines)
+def placed(paths):
+    return (f'    <group android:pivotX="96" android:pivotY="96" android:scaleX="{SCALE}" android:scaleY="{SCALE}">\n'
+            f'        <group android:translateX="{SHIFT_X}" android:translateY="{SHIFT_Y}">\n'
+            + "".join("            " + p + "\n" for p in paths)
+            + "        </group>\n    </group>\n")
 
 
 write("ic_launcher_foreground.xml",
-      HEADER.format(comment="<!-- Launcher art: a \"yap\" speech-bubble sticker. Generated by ci/icon/gen.py. -->", extra="")
-      + foreground() + "\n</vector>\n")
+      HEADER.format(comment="<!-- Launcher art: a \"P\" with a sound wave and broadcast arcs. Generated by ci/icon/gen.py. -->", extra="")
+      + placed([vpath(*s) for s in shapes]) + "</vector>\n")
 
-# Themed (monochrome) icon: one colour, so the bubble is drawn as an outline with the word inside.
-mono_lines = [f'    <group android:pivotX="96" android:pivotY="96" android:scaleX="{SCALE}" android:scaleY="{SCALE}">',
-              f'        <group android:pivotX="96" android:pivotY="96" android:rotation="{TILT}">',
-              "            " + vpath("stroke", BUBBLE, "#FFFFFF", 8)]
-for kind, d, color, width, shadow, role in shapes:
-    if role == "letter":
-        mono_lines.append("            " + vpath(kind, d, "#FFFFFF", width))
-mono_lines.append("        </group>")
-mono_lines.append("        " + vpath("fill", sparkle(158, 44, 12), "#FFFFFF", 0))
-mono_lines.append("    </group>")
+# Themed (monochrome) icon: one colour, so the P is an outline with the wave inside it.
+mono = [vpath("stroke", "M64,152 V44 H106 A36,36 0 0 1 106,116 H64", WHITE, 12),
+        vpath("stroke", MONO_WAVE, WHITE, 8)] + [vpath("stroke", d, WHITE, 8) for d, _ in ARCS[:1]]
 write("ic_launcher_monochrome.xml",
       HEADER.format(comment="<!-- Themed-icon version of the launcher art. Generated by ci/icon/gen.py. -->", extra="")
-      + "\n".join(mono_lines) + "\n</vector>\n")
+      + placed(mono) + "</vector>\n")
 
 write("ic_launcher_background.xml",
       HEADER.format(comment="<!-- Generated by ci/icon/gen.py. -->", extra='\n    xmlns:aapt="http://schemas.android.com/aapt"')
@@ -125,51 +99,43 @@ write("ic_launcher_background.xml",
 </vector>
 ''')
 
-# Status-bar icon: the bubble, solid, with three yap dots cut out (the word is too small to read at 24dp).
-NOTE_BUBBLE = "M7,3.5H17A4.5,4.5 0 0 1 21.5,8V13A4.5,4.5 0 0 1 17,17.5H10.5L5.5,21L6.5,17.3A4.5,4.5 0 0 1 2.5,13V8A4.5,4.5 0 0 1 7,3.5Z"
-dots = "".join(f"M{x - 1.5},10.5a1.5,1.5 0 1 0 3,0a1.5,1.5 0 1 0 -3,0z" for x in (8, 12, 16))
+# Status-bar icon: the P and one broadcast arc, in one colour (the wave is too fine to read at 24dp).
 with open(os.path.join(OUT_RES, "drawable", "ic_notification.xml"), "w") as f:
     f.write('<?xml version="1.0" encoding="utf-8"?>\n'
-            '<!-- Status-bar icon: the launcher\'s speech bubble, in one colour. Generated by ci/icon/gen.py. -->\n'
+            '<!-- Status-bar icon: the launcher\'s "P" with a broadcast arc, in one colour. Generated by ci/icon/gen.py. -->\n'
             '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
             '    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">\n'
-            f'    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="{NOTE_BUBBLE}{dots}" />\n'
+            '    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"\n'
+            '        android:pathData="M5.5,21 V4 H11.5 A5,5 0 0 1 11.5,14 H5.5" />\n'
+            f'    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:pathData="{arc(12, 9, 8.5, -50, 50)}" />\n'
             '</vector>\n')
 print("wrote ic_notification.xml")
 
 
-# ----- Previews: the icon in a squircle and a circle, and as a themed icon -----
+# ----- Previews: the icon as launchers crop it (squircle and circle), and as a themed icon -----
 
-def spath(kind, d, color, width):
+def spath(kind, d, color, width, alpha=1):
+    op = "" if alpha == 1 else f' opacity="{alpha}"'
     if kind == "fill":
-        return f'<path fill="{color}" d="{d}"/>'
-    return f'<path fill="none" stroke="{color}" stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round" d="{d}"/>'
-
-
-def art_svg():
-    shadow = "".join(spath(k, d, INK, w) for k, d, c, w, s, r in shapes if s)
-    art = "".join(spath(k, d, c, w) for k, d, c, w, s, r in shapes if r in ("art", "letter"))
-    sparkles = "".join(spath(k, d, c, w) for k, d, c, w, s, r in shapes if r == "sparkle")
-    return (f'<g transform="translate({SHADOW} {SHADOW}) rotate({TILT} 96 96)">{shadow}</g>'
-            f'<g transform="rotate({TILT} 96 96)">{art}</g>{sparkles}')
-
-
-def mono_svg(color):
-    word = "".join(spath(k, d, color, w) for k, d, c, w, s, r in shapes if r == "letter")
-    return (f'<g transform="rotate({TILT} 96 96)">{spath("stroke", BUBBLE, color, 8)}{word}</g>'
-            + spath("fill", sparkle(158, 44, 12), color, 0))
+        return f'<path fill="{color}"{op} d="{d}"/>'
+    return f'<path fill="none" stroke="{color}" stroke-width="{width}"{op} stroke-linecap="round" stroke-linejoin="round" d="{d}"/>'
 
 
 def icon_svg(mask, themed=False):
     clip = {"circle": '<circle cx="96" cy="96" r="64"/>', "squircle": '<rect x="32" y="32" width="128" height="128" rx="36"/>'}[mask]
-    bg = '<rect width="192" height="192" fill="#FFE0EC"/>' if themed else '<rect width="192" height="192" fill="url(#bg)"/>'
-    art = mono_svg("#5C1B3A") if themed else art_svg()
+    if themed:
+        bg = '<rect width="192" height="192" fill="#E6E0FF"/>'
+        art = "".join(spath("stroke", d, "#2A1B6B", w) for d, w in
+                      [("M64,152 V44 H106 A36,36 0 0 1 106,116 H64", 12), (MONO_WAVE, 8), (ARCS[0][0], 8)])
+    else:
+        bg = '<rect width="192" height="192" fill="url(#bg)"/>'
+        art = "".join(spath(*s) for s in shapes)
     # A launcher shows the middle two thirds of the 108dp layer (32..160 on this grid), then masks it.
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="32 32 128 128" width="192" height="192">'
             f'<defs><clipPath id="m">{clip}</clipPath>'
             f'<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{BG_TOP}"/>'
             f'<stop offset="1" stop-color="{BG_BOTTOM}"/></linearGradient></defs>'
-            f'<g clip-path="url(#m)">{bg}<g transform="translate(96 96) scale({SCALE}) translate(-96 -96)">{art}</g></g></svg>')
+            f'<g clip-path="url(#m)">{bg}<g transform="translate(96 96) scale({SCALE}) translate({-96 + SHIFT_X} {-96 + SHIFT_Y})">{art}</g></g></svg>')
 
 
 os.makedirs(OUT_PREVIEW, exist_ok=True)

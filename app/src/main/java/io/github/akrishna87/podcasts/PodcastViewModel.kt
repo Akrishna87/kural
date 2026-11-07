@@ -16,7 +16,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.ProgressHolder
+import androidx.media3.transformer.Transformer
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -63,6 +71,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 
 enum class Section(val label: String) { HOME("Home"), UP_NEXT("Up Next"), DISCOVER("Discover"), LIBRARY("Library") }
@@ -519,6 +528,80 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeBookmark(id: String) = lib.removeBookmark(id)
 
+    // ----- Clips -----
+
+    /** How far along making a clip is, 0–100, or null when no clip is being made. */
+    var clipProgress by mutableStateOf<Int?>(null); private set
+    private var clipper: Transformer? = null
+    /** While previewing a clip, where to stop. */
+    private var previewEndMs: Long? = null
+
+    /** Plays the clip's part once, then pauses. */
+    fun previewClip(startMs: Long, endMs: Long) {
+        val c = controller ?: return
+        c.seekTo(startMs)
+        previewEndMs = endMs
+        resume(c)
+    }
+
+    fun stopPreview() {
+        if (previewEndMs != null) controller?.pause()
+        previewEndMs = null
+    }
+
+    /** Cuts [startMs]..[endMs] of [e] into an .m4a file, then hands it to [done]. */
+    @OptIn(UnstableApi::class)
+    fun makeClip(e: Episode, startMs: Long, endMs: Long, done: (File) -> Unit) {
+        if (clipper != null) return
+        stopPreview()
+        val context = getApplication<Application>()
+        val dir = Clips.workDir(context)
+        // Clips made earlier were already saved or shared.
+        dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3_600_000L) it.delete() }
+        val out = File(dir, Clips.fileName(podcastTitle(e.podcastId), e.title, startMs)).also { it.delete() }
+        val transformer = Transformer.Builder(context)
+            .setAudioMimeType(MimeTypes.AUDIO_AAC)
+            .setAssetLoaderFactory(Clips.assetLoaderFactory(context))
+            .addListener(object : Transformer.Listener {
+                override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                    clipper = null
+                    clipProgress = null
+                    done(out)
+                }
+
+                override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
+                    clipper = null
+                    clipProgress = null
+                    out.delete()
+                    say(if (exportException.cause is java.io.IOException) "Couldn't make the clip. Check your connection and try again." else "Couldn't make a clip of this episode")
+                }
+            })
+            .build()
+        clipper = transformer
+        clipProgress = 0
+        transformer.start(Clips.editedItem(context, lib, e, startMs, endMs), out.path)
+        viewModelScope.launch {
+            val holder = ProgressHolder()
+            while (clipper === transformer) {
+                if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) clipProgress = holder.progress
+                delay(200)
+            }
+        }
+    }
+
+    fun cancelClip() {
+        clipper?.cancel()
+        clipper = null
+        clipProgress = null
+    }
+
+    fun saveClip(clip: File) {
+        viewModelScope.launch {
+            val where = runCatching { withContext(Dispatchers.IO) { Clips.saveToPhone(getApplication(), clip) } }
+            say(where.fold({ "Clip saved to $it" }, { "Couldn't save the clip: ${it.message}" }))
+        }
+    }
+
     // ----- Sharing -----
 
     /** A share sheet for an episode, optionally from a moment in it. */
@@ -928,8 +1011,14 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
                 sleepLeftMs = if (until > 0) (until - System.currentTimeMillis()).coerceAtLeast(0) else 0
                 sleepEndOfEpisode = SleepTimer.endOfEpisode(context)
                 sleepEndOfChapter = SleepTimer.endOfChapter(context)
+                previewEndMs?.let { end ->
+                    if (positionMs >= end) {
+                        controller?.pause()
+                        previewEndMs = null
+                    }
+                }
                 if (++n % 4 == 0) pollDownloads()
-                delay(500)
+                delay(if (previewEndMs != null) 100 else 500)
             }
         }
         viewModelScope.launch(Dispatchers.IO) { bytesUsed = Downloads.bytesUsed(context) }
@@ -969,6 +1058,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        cancelClip()
         controller?.removeListener(playerListener)
         MediaController.releaseFuture(controllerFuture)
     }
