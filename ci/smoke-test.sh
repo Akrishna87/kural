@@ -598,8 +598,9 @@ sleep 2
 dump bk-library2
 tap bk-library2 "Settings"
 sleep 2
+# Settings is long (Appearance comes first), so the section's heading may scroll past before its buttons are low enough to tap.
+scroll_to bk-settings-head "BACKUP AND RESTORE"
 scroll_to bk-settings "Back up now"
-grep -q 'text="BACKUP AND RESTORE"' "$OUT/bk-settings.xml" || fail "Settings has no Backup and restore section"
 grep -q 'text="Automatic backup"' "$OUT/bk-settings.xml" || fail "Settings has no Automatic backup switch"
 tap bk-settings "Back up now" exact
 shot 16-backup
