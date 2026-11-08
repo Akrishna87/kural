@@ -17,6 +17,11 @@
          Android shows its own confirmation. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Automatic backup to Download/Podwave: Android 9 and older need this to write there. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!--
         Plenty of podcasts still publish their feeds and audio over plain http, so cleartext has
         to be allowed for those to play. The directory itself is always searched over https.

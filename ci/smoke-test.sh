@@ -565,6 +565,128 @@ adb shell dumpsys appwidget > "$OUT/appwidget.txt"
 grep -q "podcasts.PlayerWidget" "$OUT/appwidget.txt" || fail "the home-screen widget isn't registered with the launcher"
 echo "PASS: home-screen widget is available"
 
+echo "--- Backup and restore: back up to Download/Podwave, wipe the app (like a new phone), restore"
+BK=/sdcard/Download/Podwave
+scroll_to() { # scroll_to <dump name> <text>: scroll down until <text> is on screen, above the mini player
+  local i xy
+  for i in $(seq 1 12); do
+    dump "$1"
+    if xy=$(python3 "$HERE/find_text.py" "$OUT/$1.xml" "$2" exact 2> /dev/null) && [ "${xy#* }" -lt $((H * 70 / 100)) ]; then return 0; fi
+    scroll_down
+  done
+  fail "couldn't scroll to '$2'"
+}
+adb shell input keyevent KEYCODE_MEDIA_PAUSE
+sleep 1
+# Episode Two goes in Up Next (if it isn't already), so there's a known episode to come back.
+dump bk-start
+tap bk-start "Library" last
+sleep 2
+dump bk-library
+tap bk-library "Shows" exact
+wait_for bk-shows 'text="Podwave Test Show"' 15 "the Library doesn't list the followed show"
+tap bk-shows "Podwave Test Show"
+wait_for bk-show 'content-desc="More for Episode Two Plain"' 15 "the test show's page didn't open"
+tap bk-show "More for Episode Two Plain"
+sleep 1
+dump bk-menu
+if grep -q 'text="Remove from Up Next"' "$OUT/bk-menu.xml"; then adb shell input keyevent KEYCODE_BACK; else tap bk-menu "Play last"; fi
+sleep 2
+adb shell input keyevent KEYCODE_MEDIA_PAUSE
+adb shell input keyevent KEYCODE_BACK # the show page -> Library
+sleep 2
+dump bk-library2
+tap bk-library2 "Settings"
+sleep 2
+scroll_to bk-settings "Back up now"
+grep -q 'text="BACKUP AND RESTORE"' "$OUT/bk-settings.xml" || fail "Settings has no Backup and restore section"
+grep -q 'text="Automatic backup"' "$OUT/bk-settings.xml" || fail "Settings has no Automatic backup switch"
+tap bk-settings "Back up now" exact
+shot 16-backup
+ok=""
+for _ in $(seq 1 20); do
+  sleep 3
+  rm -rf "$OUT/backup"
+  adb pull "$BK" "$OUT/backup" > /dev/null 2>&1 || continue
+  if python3 - "$OUT/backup" > "$OUT/backup-check.txt" 2>&1 <<'PY'
+import glob, json, os, sys
+d = sys.argv[1]
+b = json.load(open(os.path.join(d, "Podwave backup.json")))
+assert b["app"] == "Podwave", b.get("app")
+lib = b["library"]
+shows = [p["podcast"]["title"] for p in lib["podcasts.json"] if p.get("subscribed")]
+print("shows in the backup:", shows)
+assert "Podwave Test Show" in shows
+titles = {}
+for name in b["episodes"]:
+    for e in json.load(open(os.path.join(d, name))):
+        titles[e["id"]] = e["title"]
+queue = [titles.get(i, "?" + i) for i in lib["queue.json"]]
+print("Up Next in the backup:", queue)
+assert "Episode Two Plain" in queue
+speed = b["settings"]["settings"]["speed"]
+print("speed in the backup:", speed)
+assert speed["t"] == "f" and abs(speed["v"] - 1.5) < 1e-6
+assert "theme" in b["settings"] and "equaliser" in b["settings"]
+assert not glob.glob(os.path.join(d, "**", "*.media"), recursive=True), "downloaded audio is in the backup"
+PY
+  then ok=yes; break; fi
+done
+cat "$OUT/backup-check.txt" || true
+adb shell "ls -lR '$BK'" | head -20 || true
+[ -n "$ok" ] || fail "Back up now didn't save the shows, Up Next and settings in Download/Podwave"
+echo "PASS: Back up now saves your shows, Up Next and settings in Download/Podwave"
+
+sleep 5 # let any backup still being written finish
+adb shell pm clear "$PKG" # what uninstalling (or a new phone) does to the app's own data
+adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
+adb shell am start -W -n "$PKG/.MainActivity" > /dev/null
+wait_for wiped 'text="Welcome to Podwave"' 30 "the app didn't start afresh after clearing its data"
+grep -q 'text="Podwave Test Show"' "$OUT/wiped.xml" && fail "the app's data wasn't cleared"
+shot 17-wiped
+tap wiped "Settings"
+sleep 2
+scroll_to bk-restore "Restore from backup"
+tap bk-restore "Restore from backup" exact
+sleep 2
+dump restore-explain
+grep -q "replaces" "$OUT/restore-explain.xml" || fail "restoring doesn't explain that it replaces what's there"
+tap restore-explain "Choose folder"
+sleep 4
+dump restore-picker
+shot 18-restore-picker
+python3 "$HERE/find_text.py" "$OUT/restore-picker.xml" "Use this folder" > /dev/null 2>&1 || { tap restore-picker "Podwave"; sleep 2; dump restore-picker; }
+tap restore-picker "Use this folder"
+sleep 2
+dump restore-allow
+tap restore-allow "Allow"
+wait_for restore-ask 'Restore this backup\?' 30 "picking the Podwave folder didn't offer to restore the backup"
+shot 19-restore-ask
+grep -q "shows you follow\|1 show you follow" "$OUT/restore-ask.xml" || fail "the restore dialog doesn't say how many shows the backup has"
+grep -q "in Up Next" "$OUT/restore-ask.xml" || fail "the restore dialog doesn't mention Up Next"
+tap restore-ask "Restore" exact
+sleep 6
+adb shell input keyevent KEYCODE_BACK # Settings -> Home
+wait_for restored-home 'text="Podwave Test Show"' 30 "the followed show didn't come back after restoring"
+shot 20-restored-home
+tap restored-home "Up Next" last
+wait_for restored-upnext 'text="Episode Two Plain"' 20 "Up Next didn't come back after restoring"
+shot 21-restored-up-next
+tap restored-upnext "Home" last
+sleep 2
+dump restored-home2
+tap restored-home2 "Settings"
+sleep 2
+dump restored-settings
+grep -q 'text="1.5×"' "$OUT/restored-settings.xml" || fail "the playback speed (1.5×) wasn't restored"
+adb shell input keyevent KEYCODE_BACK
+# Backups now carry on in the restored folder: no "(1)" copies next to the old files.
+sleep 15
+adb shell "ls -R '$BK'" > "$OUT/backup-files.txt"
+cat "$OUT/backup-files.txt"
+grep -q "(1)\|(2)" "$OUT/backup-files.txt" && fail "restoring left duplicate backup files"
+echo "PASS: after wiping the app, shows, Up Next and settings come back from Download/Podwave"
+
 if adb logcat -d | grep -q "FATAL EXCEPTION"; then
   adb logcat -d > "$OUT/logcat.txt"
   fail "the app crashed (see logcat.txt)"

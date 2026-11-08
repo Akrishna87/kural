@@ -187,6 +187,7 @@ class PlaybackService : MediaLibraryService() {
 
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         scope.launch { lib.queueVersion.collect { syncQueue() } }
+        Backups.start(this)
         scope.launch {
             lib.version.collect {
                 applyEffects()
