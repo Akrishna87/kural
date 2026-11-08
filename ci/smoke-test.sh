@@ -554,7 +554,8 @@ sleep 2
 for _ in 1 2 3 4 5 6 7 8; do adb shell input swipe $((W / 2)) $((H / 3)) $((W / 2)) $((H * 3 / 4)) 150; done # back to the top
 sleep 1
 dump recap-home
-for _ in 1 2 3 4 5 6 7 8; do grep -q 'text="See your recap ›"' "$OUT/recap-home.xml" && break; scroll_down; dump recap-home; done
+# The whole card on screen: its "Your <month> so far" title and its "See your recap" line.
+for _ in 1 2 3 4 5 6 7 8; do grep -q 'text="See your recap ›"' "$OUT/recap-home.xml" && grep -q "so far" "$OUT/recap-home.xml" && break; scroll_down; dump recap-home; done
 grep -q 'text="See your recap ›"' "$OUT/recap-home.xml" || fail "Home has no recap card after listening"
 shot 17-home-recap
 grep -q "so far" "$OUT/recap-home.xml" || fail "Home's recap card doesn't show this month"
