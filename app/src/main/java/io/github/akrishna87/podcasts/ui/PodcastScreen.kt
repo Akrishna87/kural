@@ -34,7 +34,7 @@ import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.data.AutoAdd
 import io.github.akrishna87.podcasts.feed.htmlToText
 
-private enum class EpisodeView(val label: String) { ALL("All"), UNPLAYED("Unplayed"), DOWNLOADED("Downloaded"), STARRED("Starred") }
+private enum class EpisodeView(val label: String) { ALL("All"), UNPLAYED("Unplayed"), DOWNLOADED("Downloaded"), STARRED("Favourites") }
 
 /** A show: what it is, follow it, its settings, and its episodes. */
 @Composable
@@ -84,7 +84,7 @@ private fun ShowPage(vm: PodcastViewModel, feedUrl: String) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.deep(0.25f), Palette.Background)))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.wash(0.25f), Palette.Background)))) {
                 Column(Modifier.fillMaxWidth().statusBarsPadding()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
                         IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }

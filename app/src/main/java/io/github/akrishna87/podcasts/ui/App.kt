@@ -1,6 +1,10 @@
 package io.github.akrishna87.podcasts.ui
 
+import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -10,6 +14,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,9 +39,28 @@ import androidx.compose.ui.unit.sp
 import io.github.akrishna87.podcasts.PodcastViewModel
 import io.github.akrishna87.podcasts.Screen
 import io.github.akrishna87.podcasts.Section
+import io.github.akrishna87.podcasts.Settings
+import kotlin.math.abs
 
 @Composable
 fun PodwaveApp(vm: PodcastViewModel) {
+    // Lock-screen player: with an episode loaded, the app may show over the lock screen, but
+    // only the player does; everything else waits until the phone is unlocked.
+    val activity = LocalContext.current as? Activity
+    val overLockScreen = Settings.lockScreenPlayer(vm.prefs()) && vm.currentId != null
+    LaunchedEffect(overLockScreen) { activity?.showOverLockScreen(overLockScreen) }
+    val locked = overLockScreen && rememberPhoneLocked()
+    // Status-bar icons: light over dark screens (and the always-dark players), dark over light ones.
+    val darkBars = Palette.isDark || locked || (vm.showPlayer && vm.currentId != null)
+    LaunchedEffect(darkBars) {
+        val style = if (darkBars) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        (activity as? ComponentActivity)?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+    }
+    if (locked) {
+        LockScreenPlayer(vm)
+        return
+    }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     BackHandler(enabled = vm.showPlayer || vm.screens.isNotEmpty() || vm.section != Section.HOME) {
@@ -60,6 +87,7 @@ fun PodwaveApp(vm: PodcastViewModel) {
                     Screen.Alerts -> AlertsScreen(vm)
                     Screen.SettingsPage -> SettingsScreen(vm)
                     Screen.StatsPage -> StatsScreen(vm)
+                    is Screen.EqualiserPage -> EqualiserScreen(vm, screen)
                     null -> when (section) {
                         Section.HOME -> HomeScreen(vm)
                         Section.UP_NEXT -> UpNextScreen(vm)
@@ -133,17 +161,45 @@ private fun RowScope.NavItem(label: String, selectedIcon: ImageVector, icon: Ima
     }
 }
 
-/** The episode in the player, above the tabs. Tap it for the full player. */
+/** The episode in the player, above the tabs. Tap it or swipe it up for the full player; swipe sideways to change episode. */
 @Composable
 private fun MiniPlayer(vm: PodcastViewModel) {
     val e = vm.current ?: return
     val art = vm.artworkOf(e)
     val tint = artTint(vm, art, vm.podcastTitle(e.podcastId))
     val fraction = if (vm.durationMs > 0) (vm.positionMs.toFloat() / vm.durationMs).coerceIn(0f, 1f) else 0f
+    // Swipe up to open the full player; left for the next episode, right for the one before.
+    var swipeX by remember { mutableFloatStateOf(0f) }
+    var swipeY by remember { mutableFloatStateOf(0f) }
     Box(Modifier.padding(horizontal = 8.dp).padding(bottom = 2.dp)) {
         Column(
             Modifier
                 .fillMaxWidth()
+                // Detected before the layer that slides the card, so the finger is measured against the screen.
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            val threshold = 60.dp.toPx()
+                            if (abs(swipeX) > abs(swipeY)) {
+                                if (swipeX < -threshold) vm.nextEpisode() else if (swipeX > threshold) previousEpisode(vm)
+                            } else if (swipeY < -threshold / 2) {
+                                vm.showPlayer = true
+                            }
+                            swipeX = 0f
+                            swipeY = 0f
+                        },
+                        onDragCancel = { swipeX = 0f; swipeY = 0f },
+                    ) { change, drag ->
+                        change.consume()
+                        swipeX += drag.x
+                        swipeY += drag.y
+                    }
+                }
+                .graphicsLayer {
+                    translationX = if (abs(swipeX) > abs(swipeY)) swipeX * 0.5f else 0f
+                    translationY = if (abs(swipeY) >= abs(swipeX)) swipeY.coerceAtMost(0f) * 0.3f else 0f
+                    alpha = 1f - (abs(swipeX) / 900f).coerceAtMost(0.5f)
+                }
                 .clip(RoundedCornerShape(12.dp))
                 .background(tint.deep(0.62f))
                 .clickable(onClickLabel = "Open the player") { vm.showPlayer = true },
@@ -155,7 +211,7 @@ private fun MiniPlayer(vm: PodcastViewModel) {
             ) {
                 Artwork(art, vm.podcastTitle(e.podcastId), Modifier.size(46.dp), RoundedCornerShape(8.dp), titleSize = 6)
                 Column(Modifier.weight(1f)) {
-                    Text(e.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+                    Text(e.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
                     Text(vm.podcastTitle(e.podcastId), color = Color.White.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp)
                 }
                 IconButton(onClick = vm::seekBack) { Icon(Icons.Rounded.Replay10, "Skip back", tint = Color.White) }

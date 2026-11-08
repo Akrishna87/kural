@@ -65,7 +65,7 @@ private fun EpisodeDetails(vm: PodcastViewModel, e: Episode) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomSpace.current)) {
         item {
-            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.deep(0.3f), Palette.Background)))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(tint.wash(0.3f), Palette.Background)))) {
                 Column(Modifier.fillMaxWidth()) {
                     TopBar("", onBack = { vm.back() }) { EpisodeMenu(vm, e) }
                     Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -136,8 +136,8 @@ private fun EpisodeDetails(vm: PodcastViewModel, e: Episode) {
                             active = s?.downloaded == true,
                         ) { if (s?.downloaded == true || (s?.downloadId ?: 0L) != 0L) vm.deleteDownload(e.id) else vm.download(e) }
                         RoundAction(
-                            if (s?.starred == true) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                            if (s?.starred == true) "Remove star" else "Star",
+                            if (s?.starred == true) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            if (s?.starred == true) "Remove from Favourites" else "Favourite",
                             active = s?.starred == true,
                         ) { vm.toggleStar(e) }
                         RoundAction(Icons.Rounded.Share, "Share") { context.startActivity(vm.shareIntent(e)) }
@@ -264,7 +264,7 @@ private fun PeopleRow(vm: PodcastViewModel, people: List<Person>) {
 private fun RoundAction(icon: ImageVector, label: String, active: Boolean = false, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(48.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier.size(48.dp).clip(CircleShape).background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else Palette.Text.copy(alpha = 0.08f)),
     ) {
         Icon(icon, label, tint = if (active) MaterialTheme.colorScheme.primary else Palette.Text)
     }

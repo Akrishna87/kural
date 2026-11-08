@@ -14,7 +14,8 @@ Podwave is a free podcast player for Android. It has no account, ads or tracking
 3. Open **Podwave**. Find shows in **Discover**, or bring your shows from another app with
    **Import from another app (OPML)**.
 
-To update, install a newer `Podwave.apk` the same way. It installs over the old one and keeps
+To update, open **Settings → App updates → Check for updates** (Podwave only asks GitHub when
+you tap it, never by itself), or install a newer `Podwave.apk` the same way. It installs over the old one and keeps
 your shows, Up Next and your place in every episode.
 
 ## What listeners asked for, and where it is
@@ -28,6 +29,7 @@ Reddit, and from what users praise in the leading apps.
 | A queue you control (Pocket Casts' Up Next) | **Up Next**: play next / play last, drag ≡ to reorder, swipe to remove, total time left (adjusted for speed). Finished episodes leave by themselves. |
 | Inbox triage (Castro) | **New episodes** on Home, each with *Play next*, *Play last* or *Dismiss*. Nothing auto-plays unless you ask. |
 | Smart Speed and Voice Boost (Overcast), Trim Silence (Pocket Casts) | **Trim silence** and **Volume boost** (Off / Low / Medium / High, Medium by default, since many podcasts are mastered quietly), app-wide or per show. The boost lifts the level and limits peaks, so loud parts don't distort. Speed goes from 0.5× to 3× in 0.05 steps. |
+| An equaliser for clearer voices and more bass | **Equaliser** with the phone's presets, your own band curve and **bass boost**, for every show. From the player's sound options or Settings → Playback. |
 | Per-podcast speed and "skip first X seconds" | **Show settings**: custom speed and effects, **skip intro** and **skip outro**, oldest-first order, auto-download, auto-add to Up Next, notifications. |
 | Chronological play for serials | **Oldest first** per show. Serial shows default to it, offer **Play episode 1**, and autoplay continues in order. |
 | Chapters | Feed chapters (Podlove), Podcasting 2.0 JSON chapters, and **ID3 chapters inside the MP3**. Chapter list, next/previous chapter buttons and chapter artwork. |
@@ -36,19 +38,39 @@ Reddit, and from what users praise in the leading apps.
 | "Let me cut out the bit I loved and send it" | **Clip this part** in the player: drag the clip's ends (it starts as the 30 seconds you just heard), nudge them or set one to *Now*, preview it, then **Save to phone** (Music/Podwave) or **Share clip** as an audio file to any app. Clips can be up to 10 minutes. |
 | Bookmarks and notes (Pocket Casts forum) | **Bookmark** any moment with an optional note. Bookmarks are listed per episode and in Library, and you can share a moment. |
 | "Alert me when my favourite guest appears on any show" | **Guests & topics**: follow a name or topic and Podwave searches every podcast in Apple's directory for new episodes that mention it, with notifications. **Tap a guest** on an episode to find their other appearances. |
-| Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, starred, released in the last N days, under N minutes). |
+| Smart playlists ("auto-updating playlists by category") | **Filters**: pick shows and rules (unplayed, downloaded, in progress, favourites, released in the last N days, under N minutes). |
 | A smarter sleep timer | Minutes, **end of episode** or **end of chapter**. The sound fades out at the end. Press play within 5 minutes of it stopping and the same timer starts again. |
 | Android Auto | Browse Up Next, New episodes, In progress, Downloads and Shows from the car, and ask for a show by voice. |
 | Headphone buttons that make sense for talk | Next/previous on headphones and in the car **skip forward/back** (or change episode if you prefer). The notification and lock screen show skip-back/skip-forward buttons using your skip lengths. |
 | Voice search | Tap 🎤 in Discover's search box and say a show, person or topic. It uses the phone's own speech recogniser, so there's no extra permission. |
 | Leaving an app without losing your shows | **OPML import and export**. Subscribe links (`itpc://`, `pcast://`, `feed://`, Apple Podcasts links) and "Share → Podwave" also work. |
-| Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (starred and bookmarked ones are kept). |
-| Stats (Pocket Casts) | Time listened, **time saved** by speed, trimmed silences and skipped intros, episodes finished, and your most-listened shows. |
+| Downloads that tidy up after themselves | Download over Wi-Fi only, automatic downloads for chosen shows, and **delete played episodes** (favourites and bookmarked ones are kept). |
+| Your recap (Pocket Casts' stats, Spotify Wrapped) | How much you listened **this month, last month, this year or ever**; your top shows and episodes; episodes finished; **time saved** by speed, trimmed silences and skipped intros; the days and time of day you listen most; and a button to play the latest from your top show. Every minute played counts, including with the app closed. On Home and in the Library; kept on the phone with your library. |
 
 There are more touches throughout: artwork-tinted player and show pages, Podcasting 2.0
 **funding** links ("Support the show"), hosts and guests on episode pages, search inside your
-own shows, mark all played, and stars: tap ☆ next to any episode (or in the player) to keep it
-under **Library → Starred**.
+own shows, mark all played, and a **Dark / Light / Match phone** theme with eight accent colours
+(or your wallpaper's Material You colours on Android 12+).
+
+**Player gestures**: swipe the player down to close it; swipe the artwork (or the mini player) sideways to change episode, swipe the mini player up to open the player, and double-tap the artwork's left or right half to skip back or forward.
+
+**Favourites**: tap ♡ next to any episode, in the player, or on the notification and lock
+screen to keep it. Favourites have their own row on Home (tap one to play it) and their own
+tab under **Library → Favourites**.
+
+**Player on the lock screen** (on by default; Settings → Playback): lock your phone with
+Podwave open and waking it shows the player with the episode's artwork full width, a heart,
+the seek bar and the controls, without unlocking. Everything else still needs unlocking.
+
+**Home-screen widget**: the episode's artwork, title and show with skip back, play/pause and
+skip forward (your skip lengths), working even with the app closed; tap it to open Podwave.
+
+**Backup and restore** (Settings → Backup and restore): Podwave keeps a copy of your shows,
+Up Next, history, favourites, bookmarks, filters, alerts, stats and settings in the
+**Download/Podwave** folder, updated as you go, with no internet or account (turn it off there,
+or tap **Back up now**). On a new phone, copy that folder over, install Podwave and tap
+**Restore from backup**: it replaces what's there with the backup. Downloaded episodes aren't
+included. To move to another app instead, use the OPML export.
 
 ## How it's built
 

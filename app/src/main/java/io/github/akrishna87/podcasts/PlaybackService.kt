@@ -65,7 +65,12 @@ class PlaybackService : MediaLibraryService() {
         /** The notification's skip buttons, as commands the system media controls can show. */
         private const val CMD_BACK = "io.github.akrishna87.podcasts.SKIP_BACK"
         private const val CMD_FORWARD = "io.github.akrishna87.podcasts.SKIP_FORWARD"
-        private val SKIP_COMMANDS = listOf(SessionCommand(CMD_BACK, Bundle.EMPTY), SessionCommand(CMD_FORWARD, Bundle.EMPTY))
+        private const val CMD_FAVOURITE = "io.github.akrishna87.podcasts.FAVOURITE"
+        private val SKIP_COMMANDS = listOf(
+            SessionCommand(CMD_BACK, Bundle.EMPTY),
+            SessionCommand(CMD_FORWARD, Bundle.EMPTY),
+            SessionCommand(CMD_FAVOURITE, Bundle.EMPTY),
+        )
     }
 
     private lateinit var lib: Library
@@ -75,6 +80,7 @@ class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private val scope = MainScope()
     private var loudness: LoudnessEnhancer? = null
+    private var equaliser: EqualiserEffects? = null
     private val carLibrary by lazy { CarLibrary(this) }
     private val libraryExecutor = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor())
 
@@ -115,6 +121,7 @@ class PlaybackService : MediaLibraryService() {
         } catch (e: Exception) {
             null // some phones have no loudness effect
         }
+        equaliser = EqualiserEffects(this, audioSession) // the equaliser and bass boost, on the same session
         player = PodcastPlayer(exo)
 
         val openApp = PendingIntent.getActivity(
@@ -127,6 +134,7 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(openApp)
             .setCustomLayout(skipButtons())
             .build()
+        PlayerWidget.attach(this, player)
 
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -144,6 +152,7 @@ class PlaybackService : MediaLibraryService() {
                     finished(previous)
                 }
                 applyEffects()
+                refreshHeart()
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -178,7 +187,13 @@ class PlaybackService : MediaLibraryService() {
 
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         scope.launch { lib.queueVersion.collect { syncQueue() } }
-        scope.launch { lib.version.collect { applyEffects() } }
+        Backups.start(this)
+        scope.launch {
+            lib.version.collect {
+                applyEffects()
+                refreshHeart()
+            }
+        }
         scope.launch {
             while (isActive) {
                 delay(500)
@@ -199,9 +214,11 @@ class PlaybackService : MediaLibraryService() {
         lib.flush()
         prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         scope.cancel()
+        PlayerWidget.detach(this)
         session?.release()
         session = null
         loudness?.release()
+        equaliser?.release()
         exo.release()
         libraryExecutor.shutdown()
         super.onDestroy()
@@ -283,7 +300,7 @@ class PlaybackService : MediaLibraryService() {
         if (s?.played == true || (duration > 0 && pos > duration - 5_000)) pos = 0
         val intro = (e?.let { lib.entry(it.podcastId)?.settings?.skipIntroSec } ?: 0) * 1000L
         if (intro > 0 && pos < intro && (duration == 0L || intro < duration / 2)) {
-            lib.addSkipped(intro - pos)
+            lib.addSkipped(intro - pos, id)
             pos = intro
         }
         return pos
@@ -354,7 +371,7 @@ class PlaybackService : MediaLibraryService() {
             val wall = now - lastTickAt
             val heard = pos - lastTickPos
             if (wall in 1..5_000 && heard in 0..(wall * 5)) {
-                lib.state(item.mediaId)?.podcastId?.let { lib.addListening(it, wall, heard) }
+                lib.state(item.mediaId)?.podcastId?.let { lib.addListening(it, wall, heard, item.mediaId) }
             }
         }
         lastTickAt = now
@@ -367,7 +384,7 @@ class PlaybackService : MediaLibraryService() {
         val podcastId = lib.state(item.mediaId)?.podcastId
         val outro = (podcastId?.let { lib.entry(it)?.settings?.skipOutroSec } ?: 0) * 1000L
         if (playing && outro > 0 && duration > outro * 2 && pos >= duration - outro) {
-            lib.addSkipped(duration - pos)
+            lib.addSkipped(duration - pos, item.mediaId)
             finishCurrent(completed = true)
             return
         }
@@ -440,6 +457,27 @@ class PlaybackService : MediaLibraryService() {
 
     // ----- Buttons -----
 
+    /** Whether the episode playing now is one of your favourites, for the heart button. */
+    private var lastFavourite: Boolean? = null
+
+    private fun isFavourite(): Boolean = exo.currentMediaItem?.mediaId?.let { lib.state(it)?.starred } == true
+
+    /** Keeps the heart in the notification and on the lock screen in step with the library. */
+    private fun refreshHeart() {
+        val now = isFavourite()
+        if (now != lastFavourite) {
+            lastFavourite = now
+            session?.setCustomLayout(skipButtons())
+        }
+    }
+
+    private fun toggleFavourite() {
+        val id = exo.currentMediaItem?.mediaId ?: return
+        val e = lib.episode(id) ?: return
+        lib.updateState(e) { it.copy(starred = !it.starred) }
+        refreshHeart()
+    }
+
     private fun skipButtons(): List<CommandButton> {
         val back = Settings.skipBackSec(prefs)
         val forward = Settings.skipForwardSec(prefs)
@@ -469,6 +507,11 @@ class PlaybackService : MediaLibraryService() {
                 .setSessionCommand(SKIP_COMMANDS[1])
                 .setDisplayName("Forward $forward seconds")
                 .setSlots(CommandButton.SLOT_FORWARD)
+                .build(),
+            CommandButton.Builder(if (isFavourite()) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+                .setSessionCommand(SKIP_COMMANDS[2])
+                .setDisplayName(if (isFavourite()) "Remove from Favourites" else "Add to Favourites")
+                .setSlots(CommandButton.SLOT_OVERFLOW)
                 .build(),
         )
     }
@@ -569,6 +612,7 @@ class PlaybackService : MediaLibraryService() {
             when (customCommand.customAction) {
                 CMD_BACK -> player.seekBack()
                 CMD_FORWARD -> player.seekForward()
+                CMD_FAVOURITE -> toggleFavourite()
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

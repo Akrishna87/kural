@@ -77,7 +77,7 @@ import java.util.UUID
 enum class Section(val label: String) { HOME("Home"), UP_NEXT("Up Next"), DISCOVER("Discover"), LIBRARY("Library") }
 
 enum class LibraryTab(val label: String) {
-    SHOWS("Shows"), FILTERS("Filters"), DOWNLOADS("Downloads"), STARRED("Starred"), BOOKMARKS("Bookmarks"), HISTORY("History")
+    SHOWS("Shows"), FILTERS("Filters"), DOWNLOADS("Downloads"), STARRED("Favourites"), BOOKMARKS("Bookmarks"), HISTORY("History")
 }
 
 enum class SearchMode(val label: String) { SHOWS("Shows"), EPISODES("Episodes"), MY_EPISODES("My shows") }
@@ -92,6 +92,8 @@ sealed interface Screen {
     data object Alerts : Screen
     data object SettingsPage : Screen
     data object StatsPage : Screen
+    /** The equaliser; opened from the full player, Back goes back to it. */
+    data class EqualiserPage(val fromPlayer: Boolean = false) : Screen
 }
 
 /** Something loaded from the internet. */
@@ -141,6 +143,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
     private val context get() = getApplication<Application>()
     val lib = app.library()
     private val prefs = Settings.prefs(app)
+    val equaliser = EqualiserState(app)
 
     // ----- Navigation -----
     val screens = mutableStateListOf<Screen>()
@@ -435,7 +438,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
         keep(e)
         val on = lib.state(e.id)?.starred != true
         lib.updateState(e) { it.copy(starred = on) }
-        say(if (on) "Starred" else "Removed the star")
+        say(if (on) "Added to Favourites" else "Removed from Favourites")
     }
 
     fun dismissNew(ids: Collection<String>) = lib.dismissNew(ids)
@@ -1059,6 +1062,7 @@ class PodcastViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         cancelClip()
+        equaliser.close()
         controller?.removeListener(playerListener)
         MediaController.releaseFuture(controllerFuture)
     }

@@ -126,6 +126,31 @@ fun HomeScreen(vm: PodcastViewModel) {
                 items(upcoming.take(3), key = { "q" + it.id }) { e -> EpisodeRow(vm, e) }
             }
 
+            if (snap.starred.isNotEmpty()) {
+                item {
+                    SectionTitle("Favourites", action = "See all") {
+                        vm.libraryTab = LibraryTab.STARRED
+                        vm.selectSection(Section.LIBRARY)
+                    }
+                }
+                item {
+                    // Like a music app: tap a favourite and it plays.
+                    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(snap.starred.take(20), key = { "f" + it.id }) { e ->
+                            ShowTile(
+                                e.title,
+                                vm.podcastTitle(e.podcastId),
+                                vm.artworkOf(e),
+                                { vm.play(e); vm.showPlayer = true },
+                                Modifier.width(132.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            item(key = "recap") { HomeRecapCard(vm, onClick = { vm.open(Screen.StatsPage) }) }
+
             if (snap.hits.isNotEmpty()) {
                 item { SectionTitle("Mentions you're following", action = "See all") { vm.open(Screen.Alerts) } }
                 items(snap.hits.take(3), key = { "h" + it.episode.id }) { hit ->
@@ -205,7 +230,7 @@ private fun InboxRow(vm: PodcastViewModel, e: Episode) {
 @Composable
 private fun TriageChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Row(
-        Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.07f)).clickable(onClickLabel = label, onClick = onClick)
+        Modifier.clip(CircleShape).background(Palette.Text.copy(alpha = 0.07f)).clickable(onClickLabel = label, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -236,19 +261,22 @@ private fun ContinueCard(vm: PodcastViewModel, e: Episode) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(show.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(e.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(e.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                val fraction = if (isCurrent && vm.durationMs > 0) vm.positionMs.toFloat() / vm.durationMs else progressOf(e, s)
-                ProgressLine(fraction, Modifier.fillMaxWidth(), Color.White)
-                Spacer(Modifier.height(4.dp))
-                Text(lengthLabel(e, s), fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f))
+        // White on the artwork's colour in every theme.
+        CompositionLocalProvider(LocalContentColor provides Color.White) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    val fraction = if (isCurrent && vm.durationMs > 0) vm.positionMs.toFloat() / vm.durationMs else progressOf(e, s)
+                    ProgressLine(fraction, Modifier.fillMaxWidth(), Color.White)
+                    Spacer(Modifier.height(4.dp))
+                    Text(lengthLabel(e, s), fontSize = 12.sp, color = Color.White.copy(alpha = 0.75f))
+                }
+                Spacer(Modifier.width(8.dp))
+                PlayButton(vm, e, size = 38)
             }
-            Spacer(Modifier.width(8.dp))
-            PlayButton(vm, e, size = 38)
         }
     }
 }

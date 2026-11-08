@@ -38,7 +38,7 @@ import io.github.akrishna87.podcasts.feed.formatClock
 fun LibraryScreen(vm: PodcastViewModel) {
     Column(Modifier.fillMaxSize()) {
         TopBar("Library", onBack = null) {
-            IconButton(onClick = { vm.open(Screen.StatsPage) }) { Icon(Icons.Rounded.Insights, "Listening stats") }
+            IconButton(onClick = { vm.open(Screen.StatsPage) }) { Icon(Icons.Rounded.Insights, "Your recap") }
             IconButton(onClick = { vm.open(Screen.SettingsPage) }) { Icon(Icons.Rounded.Settings, "Settings") }
         }
         ChipRow(LibraryTab.entries, vm.libraryTab, { it.label }, { vm.libraryTab = it })
@@ -58,7 +58,7 @@ fun LibraryScreen(vm: PodcastViewModel) {
                 EmptyState(Icons.Rounded.DownloadForOffline, "No downloads", "Download episodes to listen without a connection. Shows can download new episodes by themselves, too.")
             }
             LibraryTab.STARRED -> EpisodeList(vm, vm.snap.starred) {
-                EmptyState(Icons.Rounded.StarOutline, "Nothing starred", "Tap ☆ next to any episode to keep it here.")
+                EmptyState(Icons.Rounded.FavoriteBorder, "No favourites yet", "Tap ♡ next to any episode, in the player or on the lock screen, to keep it here.")
             }
             LibraryTab.BOOKMARKS -> BookmarksList(vm)
             LibraryTab.HISTORY -> EpisodeList(vm, vm.snap.history) {
@@ -212,7 +212,7 @@ private fun describe(vm: PodcastViewModel, f: EpisodeFilter): String {
     if (f.unplayedOnly) parts += "unplayed"
     if (f.inProgressOnly) parts += "in progress"
     if (f.downloadedOnly) parts += "downloaded"
-    if (f.starredOnly) parts += "starred"
+    if (f.starredOnly) parts += "favourites"
     if (f.maxAgeDays > 0) parts += "last ${f.maxAgeDays} days"
     if (f.maxMinutes > 0) parts += "under ${f.maxMinutes} min"
     return parts.joinToString(" · ")
@@ -269,7 +269,7 @@ private fun FilterEditor(vm: PodcastViewModel, initial: EpisodeFilter, onDone: (
                 Toggle("Unplayed only", f.unplayedOnly) { f = f.copy(unplayedOnly = it) }
                 Toggle("In progress only", f.inProgressOnly) { f = f.copy(inProgressOnly = it) }
                 Toggle("Downloaded only", f.downloadedOnly) { f = f.copy(downloadedOnly = it) }
-                Toggle("Starred only", f.starredOnly) { f = f.copy(starredOnly = it) }
+                Toggle("Favourites only", f.starredOnly) { f = f.copy(starredOnly = it) }
                 Spacer(Modifier.height(8.dp))
                 Text("Released", style = MaterialTheme.typography.labelLarge)
                 ChipRow(listOf(0, 1, 7, 14, 30), f.maxAgeDays, { if (it == 0) "Any time" else if (it == 1) "Today" else "$it days" }, { f = f.copy(maxAgeDays = it) }, Modifier.padding(vertical = 4.dp))
